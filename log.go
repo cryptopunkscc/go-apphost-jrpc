@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"encoding/json"
 	"log"
 	"net"
 )
@@ -31,4 +32,11 @@ func (cl *ConnLogger) Write(b []byte) (n int, err error) {
 		cl.Print("> ", string(b[:n]))
 	}
 	return
+}
+
+func (conn *Conn) WithLogger(logger *log.Logger) *Conn {
+	connLogger := NewConnLogger(conn.Conn, logger)
+	conn.enc = json.NewEncoder(connLogger)
+	conn.dec = json.NewDecoder(connLogger)
+	return conn
 }
