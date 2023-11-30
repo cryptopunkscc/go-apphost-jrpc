@@ -2,24 +2,24 @@ package rpc
 
 import (
 	"encoding/json"
+	"io"
 	"log"
-	"net"
 )
 
 type ConnLogger struct {
-	net.Conn
+	io.ReadWriteCloser
 	*log.Logger
 }
 
-func NewConnLogger(conn net.Conn, logger *log.Logger) *ConnLogger {
+func NewConnLogger(conn io.ReadWriteCloser, logger *log.Logger) *ConnLogger {
 	return &ConnLogger{
-		Conn:   conn,
-		Logger: logger,
+		ReadWriteCloser: conn,
+		Logger:          logger,
 	}
 }
 
 func (cl *ConnLogger) Read(b []byte) (n int, err error) {
-	n, err = cl.Conn.Read(b)
+	n, err = cl.ReadWriteCloser.Read(b)
 	if n > 0 {
 		cl.Print("< ", string(b[:n]))
 	}
@@ -27,7 +27,7 @@ func (cl *ConnLogger) Read(b []byte) (n int, err error) {
 }
 
 func (cl *ConnLogger) Write(b []byte) (n int, err error) {
-	n, err = cl.Conn.Write(b)
+	n, err = cl.ReadWriteCloser.Write(b)
 	if n > 0 {
 		cl.Print("> ", string(b[:n]))
 	}
@@ -35,7 +35,7 @@ func (cl *ConnLogger) Write(b []byte) (n int, err error) {
 }
 
 func (conn *Conn) WithLogger(logger *log.Logger) *Conn {
-	connLogger := NewConnLogger(conn.Conn, logger)
+	connLogger := NewConnLogger(conn.ReadWriteCloser, logger)
 	conn.enc = json.NewEncoder(connLogger)
 	conn.dec = json.NewDecoder(connLogger)
 	return conn

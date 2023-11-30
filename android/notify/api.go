@@ -1,5 +1,16 @@
 package notify
 
+type ApiClient interface {
+	Api
+	Connect() (err error)
+	Close() (err error)
+}
+
+type Api interface {
+	Create(channel Channel) (err error)
+	Notify(notification Notification) (err error)
+}
+
 const (
 	Port = "android/notify/jrpc"
 )

@@ -1,7 +1,6 @@
 package notify
 
 import (
-	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	rpc "github.com/cryptopunkscc/go-apphost-jrpc"
@@ -10,12 +9,16 @@ import (
 type Client struct {
 	id.Identity
 	rpc.Conn
+	port string
 }
 
 func (c *Client) Connect() (err error) {
-	conn, err := astral.Query(c.Identity, Port)
+	if c.port == "" {
+		c.port = Port
+	}
+	conn, err := astral.Query(c.Identity, c.port)
 	if err == nil {
-		c.Conn = *rpc.NewConn(context.Background(), conn)
+		c.Conn = *rpc.NewConn(conn)
 	}
 	return
 }
@@ -28,7 +31,7 @@ func (c *Client) Notify(notification Notification) (err error) {
 	return rpc.Command(c.Conn, "notify", notification)
 }
 
-func (c *Client) Notifier() (dispatch Notify) {
+func Notifier(c ApiClient) (dispatch Notify) {
 	nc := make(chan []Notification, 128)
 	dispatch = nc
 	go func() {

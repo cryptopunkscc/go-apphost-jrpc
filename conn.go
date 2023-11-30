@@ -1,33 +1,37 @@
 package rpc
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
+	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/astral"
+	net2 "github.com/cryptopunkscc/astrald/net"
 	"io"
 )
 
 type Conn struct {
-	astral.Conn
-	Ctx      context.Context
-	closeCtx context.CancelFunc
+	io.ReadWriteCloser
 	enc      *json.Encoder
 	dec      *json.Decoder
+	remoteID id.Identity
 }
 
-func (conn *Conn) Close() error {
-	conn.closeCtx()
-	return conn.Conn.Close()
+func (conn *Conn) RemoteIdentity() id.Identity {
+	return conn.remoteID
 }
 
-func NewConn(ctx context.Context, conn *astral.Conn) (c *Conn) {
+func NewConn(conn io.ReadWriteCloser) (c *Conn) {
 	c = &Conn{
-		Conn: *conn,
-		enc:  json.NewEncoder(conn),
-		dec:  json.NewDecoder(conn),
+		ReadWriteCloser: conn,
+		enc:             json.NewEncoder(conn),
+		dec:             json.NewDecoder(conn),
 	}
-	c.Ctx, c.closeCtx = context.WithCancel(ctx)
+	switch conn2 := conn.(type) {
+	case *astral.Conn:
+		c.remoteID = conn2.RemoteIdentity()
+	case net2.SecureConn:
+		c.remoteID = conn2.RemoteIdentity()
+	}
 	return
 }
 

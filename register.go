@@ -5,18 +5,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/lib/astral"
+	"io"
 	"reflect"
 	"strings"
 )
 
 type Server[T any] struct {
-	Ctx     context.Context
-	Accept  func(query *astral.QueryData) (*astral.Conn, error)
-	Handler func(conn *Conn) T
+	Accept  func(query *astral.QueryData) (io.ReadWriteCloser, error)
+	Handler func(ctx context.Context, conn *Conn) T
 }
 
-func (s Server[T]) Run() (err error) {
-	srvName := fmt.Sprintf("%v", s.Handler(nil))
+func (s Server[T]) Run(ctx context.Context) (err error) {
+	if ctx == nil {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+	}
+	srvName := fmt.Sprintf("%v", s.Handler(ctx, nil))
 	listener, err := astral.Register(srvName)
 	if err != nil {
 		return
@@ -25,33 +30,30 @@ func (s Server[T]) Run() (err error) {
 	if s.Accept == nil {
 		s.Accept = acceptAll
 	}
-	if s.Ctx == nil {
-		s.Ctx = context.Background()
-	}
 	queryCh := listener.QueryCh()
 	for {
 		select {
-		case <-s.Ctx.Done():
+		case <-ctx.Done():
 			return
 		case data := <-queryCh:
-			go handleQuery(s.Ctx, data, s.Accept,
-				func(conn *Conn) any {
-					return s.Handler(conn)
+			go handleQuery(ctx, data, s.Accept,
+				func(ctx context.Context, conn *Conn) any {
+					return s.Handler(ctx, conn)
 				},
 			)
 		}
 	}
 }
 
-func acceptAll(q *astral.QueryData) (*astral.Conn, error) {
+func acceptAll(q *astral.QueryData) (io.ReadWriteCloser, error) {
 	return q.Accept()
 }
 
 func handleQuery(
 	ctx context.Context,
 	data *astral.QueryData,
-	accept func(query *astral.QueryData) (*astral.Conn, error),
-	service func(*Conn) any,
+	accept func(query *astral.QueryData) (io.ReadWriteCloser, error),
+	service func(ctx context.Context, rpc *Conn) any,
 ) {
 	// accept conn
 	conn, err := accept(data)
@@ -60,20 +62,33 @@ func handleQuery(
 	}
 	defer conn.Close()
 
+	Handle(ctx, conn, service)
+}
+
+func Handle(
+	ctx context.Context,
+	conn io.ReadWriteCloser,
+	service func(ctx context.Context, rpc *Conn) any,
+) {
 	// create service
-	rpc := NewConn(ctx, conn)
-	defer rpc.Close()
-	srv := service(rpc)
+	rpc := NewConn(conn)
+	ctx, closeCtx := context.WithCancel(ctx)
+	defer func() {
+		closeCtx()
+		_ = rpc.Close()
+	}()
+	srv := service(ctx, rpc)
 	if srv == nil {
 		return
 	}
 
 	// try handle conn
+	var err error
 	switch srv.(type) {
 	case error:
 		err = fmt.Errorf("cannot invoke service: %v", srv)
 	default:
-		err = handleConn(rpc, srv)
+		err = handleConn(ctx, rpc, srv)
 	}
 	if err != nil {
 		_ = rpc.Encode(err)
@@ -81,52 +96,60 @@ func handleQuery(
 	return
 }
 
-func handleConn(rpc *Conn, srv any) (err error) {
-	for rpc.Ctx.Err() == nil {
+func handleConn(ctx context.Context, rpc *Conn, srv any) error {
+	for ctx.Err() == nil {
 
 		// decode method
 		m := method{}
-		if err = rpc.Decode(&m); err != nil {
-			return
+		if err := rpc.Decode(&m); err != nil {
+			return err
 		}
 
 		// invoke method
-		r, e := invoke(srv, m)
-		if e != nil {
-			r = e
+		r, err := invoke(srv, m)
+		if err != nil {
+			return err
 		}
 
 		// handle chan result
-		v := reflect.ValueOf(r)
-		if r != nil && v.Kind() == reflect.Chan {
-			sel := []reflect.SelectCase{{
-				Dir:  reflect.SelectRecv,
-				Chan: v,
-			}}
-		loop:
-			for {
-				select {
-				case <-rpc.Ctx.Done():
-					break loop
-				default:
-					_, recv, ok := reflect.Select(sel)
-					if !ok {
-						break loop
-					}
-					r = recv.Interface()
-					if err = rpc.Encode(r); err != nil {
-						break loop
-					}
-				}
-			}
-			//v.Close()
-			return
+		if b, err := handleChannel(ctx, rpc, r); b {
+			return err
 		}
 
 		// handle normal results
-		_ = rpc.Encode(r)
+		if err := rpc.Encode(r); err != nil {
+			return nil
+		}
 	}
-	return
+	return nil
+}
+
+func handleChannel(ctx context.Context, rpc *Conn, r any) (b bool, err error) {
+	v := reflect.ValueOf(r)
+	if r == nil || v.Kind() != reflect.Chan {
+		return
+	}
+
+	b = true
+	sel := []reflect.SelectCase{{
+		Dir:  reflect.SelectRecv,
+		Chan: v,
+	}}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			_, recv, ok := reflect.Select(sel)
+			if !ok {
+				return
+			}
+			r = recv.Interface()
+			if err = rpc.Encode(r); err != nil {
+				return
+			}
+		}
+	}
 }
 
 func invoke(service any, method method) (a any, err error) {
