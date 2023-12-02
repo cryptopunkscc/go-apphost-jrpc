@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	rpc "github.com/cryptopunkscc/go-apphost-jrpc"
+	"github.com/cryptopunkscc/go-apphost-jrpc/android"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"testing"
@@ -50,7 +51,7 @@ func TestServer(t *testing.T, err bool) (cancelFunc context.CancelFunc) {
 
 const testPort = "android/notify/jrpc/test"
 
-var _ Api = testService{}
+var _ android.NotifyServiceApi = testService{}
 
 type testService struct {
 	err bool
@@ -60,7 +61,7 @@ func (t testService) String() string {
 	return testPort
 }
 
-func (t testService) Create(channel Channel) (err error) {
+func (t testService) Create(channel *android.Channel) (err error) {
 	if t.err {
 		err = Response(channel)
 	} else {
@@ -69,7 +70,7 @@ func (t testService) Create(channel Channel) (err error) {
 	return
 }
 
-func (t testService) Notify(notification Notification) (err error) {
+func (t testService) Notify(notification *android.Notification) (err error) {
 	if t.err {
 		err = Response(notification)
 	} else {

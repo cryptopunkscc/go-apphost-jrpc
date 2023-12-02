@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type link struct {
+type Link struct {
 	Id       int
 	RemoteId string
 	Remote   string
@@ -16,8 +16,8 @@ type link struct {
 	Latency  time.Duration
 }
 
-func (srv service) Links() <-chan []link {
-	c := make(chan []link)
+func (srv service) Links() <-chan []Link {
+	c := make(chan []Link)
 	go func() {
 		c <- srv.links()
 
@@ -29,7 +29,7 @@ func (srv service) Links() <-chan []link {
 	return c
 }
 
-func (m *Module) links() (contacts []link) {
+func (m *Module) links() (contacts []Link) {
 	for _, l := range m.node.Network().Links().All() {
 		if l == nil {
 			continue
@@ -45,7 +45,7 @@ func (m *Module) links() (contacts []link) {
 			lat = l.Latency()
 		}
 
-		c := link{
+		c := Link{
 			Id:       l.ID(),
 			RemoteId: l.RemoteIdentity().String(),
 			Remote:   m.node.Resolver().DisplayName(l.RemoteIdentity()),

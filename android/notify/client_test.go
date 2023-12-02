@@ -2,6 +2,7 @@ package notify
 
 import (
 	"context"
+	"github.com/cryptopunkscc/go-apphost-jrpc/android"
 	"testing"
 	"time"
 )
@@ -13,7 +14,7 @@ func TestClient_All(t *testing.T) {
 	t.Run("Create", func(t *testing.T) {
 		c, cancel := ConnectTestClient(t)
 		defer cancel()
-		expected := Channel{
+		expected := android.Channel{
 			Id:         "test",
 			Name:       "test",
 			Importance: 9001,
@@ -25,7 +26,7 @@ func TestClient_All(t *testing.T) {
 	t.Run("Notify", func(t *testing.T) {
 		c, cancel := ConnectTestClient(t)
 		defer cancel()
-		expected := Notification{
+		expected := android.Notification{
 			Id:        1,
 			ChannelId: "id",
 		}

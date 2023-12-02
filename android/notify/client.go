@@ -4,6 +4,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	rpc "github.com/cryptopunkscc/go-apphost-jrpc"
+	"github.com/cryptopunkscc/go-apphost-jrpc/android"
 )
 
 type Client struct {
@@ -12,9 +13,13 @@ type Client struct {
 	port string
 }
 
+func NewClient() ApiClient {
+	return &Client{}
+}
+
 func (c *Client) Connect() (err error) {
 	if c.port == "" {
-		c.port = Port
+		c.port = android.NotifyPort
 	}
 	conn, err := astral.Query(c.Identity, c.port)
 	if err == nil {
@@ -23,16 +28,16 @@ func (c *Client) Connect() (err error) {
 	return
 }
 
-func (c *Client) Create(channel Channel) (err error) {
+func (c *Client) Create(channel android.Channel) (err error) {
 	return rpc.Command(c.Conn, "create", channel)
 }
 
-func (c *Client) Notify(notification Notification) (err error) {
+func (c *Client) Notify(notification android.Notification) (err error) {
 	return rpc.Command(c.Conn, "notify", notification)
 }
 
 func Notifier(c ApiClient) (dispatch Notify) {
-	nc := make(chan []Notification, 128)
+	nc := make(chan []android.Notification, 128)
 	dispatch = nc
 	go func() {
 		defer c.Close()
