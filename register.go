@@ -36,6 +36,9 @@ func (s Server[T]) Run(ctx context.Context) (err error) {
 		case <-ctx.Done():
 			return
 		case data := <-queryCh:
+			if data == nil {
+				return
+			}
 			go handleQuery(ctx, data, s.Accept,
 				func(ctx context.Context, conn *Conn) any {
 					return s.Handler(ctx, conn)
