@@ -20,7 +20,7 @@ func TestClient_All(t *testing.T) {
 			Importance: 9001,
 		}
 		actual := c.Create(expected)
-		Verify(t, actual, expected)
+		Verify(t, actual, &expected)
 	})
 
 	t.Run("Notify", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestClient_All(t *testing.T) {
 			ChannelId: "id",
 		}
 		actual := c.Notify(expected)
-		Verify(t, actual, expected)
+		Verify(t, actual, &expected)
 	})
 }
 
