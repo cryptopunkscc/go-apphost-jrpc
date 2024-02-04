@@ -1,7 +1,7 @@
 package contacts
 
 import (
-	"github.com/cryptopunkscc/astrald/mod/presence"
+	"github.com/cryptopunkscc/astrald/mod/presence/src"
 )
 
 func (srv service) ListPresence() (c []Contact) {

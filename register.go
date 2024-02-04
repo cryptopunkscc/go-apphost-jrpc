@@ -111,7 +111,7 @@ func handleConn(ctx context.Context, rpc *Conn, srv any) error {
 		// invoke method
 		r, err := invoke(srv, m)
 		if err != nil {
-			return err
+			r = err
 		}
 
 		// handle chan result
