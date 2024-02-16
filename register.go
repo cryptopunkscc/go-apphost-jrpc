@@ -12,7 +12,7 @@ import (
 
 type Server[T any] struct {
 	Accept  func(query *astral.QueryData) (io.ReadWriteCloser, error)
-	Handler func(ctx context.Context, conn *Conn) T
+	Handler func(ctx context.Context, conn Conn) T
 }
 
 func (s Server[T]) Run(ctx context.Context) (err error) {
@@ -40,7 +40,7 @@ func (s Server[T]) Run(ctx context.Context) (err error) {
 				return
 			}
 			go handleQuery(ctx, data, s.Accept,
-				func(ctx context.Context, conn *Conn) any {
+				func(ctx context.Context, conn Conn) any {
 					return s.Handler(ctx, conn)
 				},
 			)
@@ -56,7 +56,7 @@ func handleQuery(
 	ctx context.Context,
 	data *astral.QueryData,
 	accept func(query *astral.QueryData) (io.ReadWriteCloser, error),
-	service func(ctx context.Context, rpc *Conn) any,
+	service func(ctx context.Context, rpc Conn) any,
 ) {
 	// accept conn
 	conn, err := accept(data)
@@ -71,10 +71,10 @@ func handleQuery(
 func Handle(
 	ctx context.Context,
 	conn io.ReadWriteCloser,
-	service func(ctx context.Context, rpc *Conn) any,
+	service func(ctx context.Context, rpc Conn) any,
 ) {
 	// create service
-	rpc := NewConn(conn)
+	rpc := NewFlow(conn)
 	ctx, closeCtx := context.WithCancel(ctx)
 	defer func() {
 		closeCtx()
@@ -99,7 +99,7 @@ func Handle(
 	return
 }
 
-func handleConn(ctx context.Context, rpc *Conn, srv any) error {
+func handleConn(ctx context.Context, rpc Conn, srv any) error {
 	for ctx.Err() == nil {
 
 		// decode method
@@ -127,7 +127,7 @@ func handleConn(ctx context.Context, rpc *Conn, srv any) error {
 	return nil
 }
 
-func handleChannel(ctx context.Context, rpc *Conn, r any) (b bool, err error) {
+func handleChannel(ctx context.Context, rpc Conn, r any) (b bool, err error) {
 	v := reflect.ValueOf(r)
 	if r == nil || v.Kind() != reflect.Chan {
 		return

@@ -23,7 +23,7 @@ func (c *Client) Connect() (err error) {
 	}
 	conn, err := astral.Query(c.Identity, c.port)
 	if err == nil {
-		c.Conn = *rpc.NewConn(conn)
+		c.Conn = rpc.NewFlow(conn)
 	}
 	return
 }

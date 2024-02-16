@@ -36,7 +36,7 @@ func TestServer(t *testing.T, err bool) (cancelFunc context.CancelFunc) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	go func() {
 		err := rpc.Server[testService]{
-			Handler: func(ctx context.Context, conn *rpc.Conn) (ts testService) {
+			Handler: func(ctx context.Context, conn rpc.Conn) (ts testService) {
 				ts.err = err
 				return
 			},

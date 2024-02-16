@@ -9,5 +9,5 @@ type service struct {
 	*Module
 	parent context.Context
 	ctx    context.Context
-	conn   *rpc.Conn
+	conn   rpc.Conn
 }

@@ -21,7 +21,7 @@ func main() {
 				conn = rpc.NewConnLogger(conn, log.New(log.Writer(), "service ", 0))
 				return
 			},
-			Handler: func(ctx context.Context, conn *rpc.Conn) Api {
+			Handler: func(ctx context.Context, conn rpc.Conn) Api {
 				return NewApiService()
 			},
 		}.Run(ctx)
@@ -31,13 +31,13 @@ func main() {
 	}()
 	time.Sleep(time.Millisecond * 100)
 
-	// prepare connection
-	conn, err := astral.Query(id.Identity{}, apiService{}.String())
+	var err error
+	rpcConn, err := rpc.QueryFlow(id.Identity{}, apiService{}.String())
+	//rpcConn := rpc.NewRequest(id.Identity{}, apiService{}.String())
+	rpcConn.WithLogger(log.New(log.Writer(), " client ", 0))
 	if err != nil {
 		panic(err)
 	}
-	conn2 := rpc.NewConnLogger(conn.Conn, log.New(log.Writer(), " client ", 0))
-	rpcConn := *rpc.NewConn(conn2)
 
 	// case
 	if _, err = rpc.Query[[]string](rpcConn, "api"); err != nil {

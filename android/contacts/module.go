@@ -19,7 +19,7 @@ func init() {
 
 type Loader struct{}
 
-func (Loader) Load(node modules.Node, _ assets.Store, log *log.Logger) (modules.Module, error) {
+func (Loader) Load(node modules.Node, _ assets.Assets, log *log.Logger) (modules.Module, error) {
 	mod := &Module{node: node, log: log}
 	return mod, nil
 }
@@ -30,11 +30,10 @@ type Module struct {
 }
 
 func (m *Module) Run(ctx context.Context) error {
-	service, err := m.node.Services().Register(ctx, m.node.Identity(), ServiceName, m)
+	err := m.node.Router().AddRoute(m.node.Identity(), m.node.Identity(), m, 0)
 	if err != nil {
 		return err
 	}
-	<-service.Done()
 	return nil
 }
 
@@ -48,7 +47,7 @@ func (m *Module) RouteQuery(
 		return nil, net.ErrRejected
 	}
 	return net.Accept(query, caller, func(conn net.SecureConn) {
-		rpc.Handle(ctx, conn, func(ctx2 context.Context, rpc *rpc.Conn) any {
+		rpc.Handle(ctx, conn, func(ctx2 context.Context, rpc rpc.Conn) any {
 			return &service{
 				Module: m,
 				parent: ctx,
