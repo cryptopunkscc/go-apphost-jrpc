@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
@@ -21,7 +22,7 @@ func (s Server[T]) Run(ctx context.Context) (err error) {
 		ctx, cancel = context.WithCancel(context.Background())
 		defer cancel()
 	}
-	srvName := fmt.Sprintf("%v", s.Handler(ctx, nil))
+	srvName := fmt.Sprintf("%v*", s.Handler(ctx, nil))
 	listener, err := astral.Register(srvName)
 	if err != nil {
 		return
@@ -65,11 +66,12 @@ func handleQuery(
 	}
 	defer conn.Close()
 
-	Handle(ctx, conn, service)
+	Handle(ctx, data.Query(), conn, service)
 }
 
 func Handle(
 	ctx context.Context,
+	data string,
 	conn io.ReadWriteCloser,
 	service func(ctx context.Context, rpc Conn) any,
 ) {
@@ -91,21 +93,28 @@ func Handle(
 	case error:
 		err = fmt.Errorf("cannot invoke service: %v", srv)
 	default:
-		err = handleConn(ctx, rpc, srv)
+		err = handleConn(ctx, data, rpc, srv)
 	}
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		_ = rpc.Encode(err)
 	}
 	return
 }
 
-func handleConn(ctx context.Context, rpc Conn, srv any) error {
+func handleConn(ctx context.Context, query string, rpc Conn, srv any) error {
 	for ctx.Err() == nil {
 
-		// decode method
 		m := method{}
-		if err := rpc.Decode(&m); err != nil {
-			return err
+		if mm, _ := strings.CutPrefix(query, fmt.Sprint(srv)); mm != "" {
+			// decode method from query
+			if err := json.Unmarshal([]byte(mm), &m); err != nil {
+				return err
+			}
+		} else {
+			// decode method from connection
+			if err := rpc.Decode(&m); err != nil {
+				return err
+			}
 		}
 
 		// invoke method
@@ -115,19 +124,19 @@ func handleConn(ctx context.Context, rpc Conn, srv any) error {
 		}
 
 		// handle chan result
-		if b, err := handleChannel(ctx, rpc, r); b {
-			return err
+		if b := handleChannel(ctx, rpc, r); b {
+			return nil
 		}
 
 		// handle normal results
-		if err := rpc.Encode(r); err != nil {
+		if err = rpc.Encode(r); err != nil {
 			return nil
 		}
 	}
 	return nil
 }
 
-func handleChannel(ctx context.Context, rpc Conn, r any) (b bool, err error) {
+func handleChannel(ctx context.Context, rpc Conn, r any) (b bool) {
 	v := reflect.ValueOf(r)
 	if r == nil || v.Kind() != reflect.Chan {
 		return
@@ -147,8 +156,8 @@ func handleChannel(ctx context.Context, rpc Conn, r any) (b bool, err error) {
 			if !ok {
 				return
 			}
-			r = recv.Interface()
-			if err = rpc.Encode(r); err != nil {
+			r := recv.Interface()
+			if err := rpc.Encode(r); err != nil {
 				return
 			}
 		}

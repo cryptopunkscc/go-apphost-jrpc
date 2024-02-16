@@ -47,7 +47,7 @@ func (m *Module) RouteQuery(
 		return nil, net.ErrRejected
 	}
 	return net.Accept(query, caller, func(conn net.SecureConn) {
-		rpc.Handle(ctx, conn, func(ctx2 context.Context, rpc rpc.Conn) any {
+		rpc.Handle(ctx, query.Query(), conn, func(ctx2 context.Context, rpc rpc.Conn) any {
 			return &service{
 				Module: m,
 				parent: ctx,

@@ -32,8 +32,8 @@ func main() {
 	time.Sleep(time.Millisecond * 100)
 
 	var err error
-	rpcConn, err := rpc.QueryFlow(id.Identity{}, apiService{}.String())
-	//rpcConn := rpc.NewRequest(id.Identity{}, apiService{}.String())
+	//rpcConn, err := rpc.QueryFlow(id.Identity{}, apiService{}.String())
+	rpcConn := rpc.NewRequest(id.Identity{}, apiService{}.String())
 	rpcConn.WithLogger(log.New(log.Writer(), " client ", 0))
 	if err != nil {
 		panic(err)
