@@ -3,8 +3,8 @@ module github.com/cryptopunkscc/go-apphost-jrpc
 go 1.21
 
 require (
-	github.com/cryptopunkscc/astrald v0.0.0-20240202171346-3b6b1a766a67
-	github.com/stretchr/testify v1.8.4
+	github.com/cryptopunkscc/astrald v0.0.0-20240220164229-d072469516dc
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
@@ -19,12 +19,12 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.17 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/crypto v0.18.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/sqlite v1.5.4 // indirect
@@ -35,4 +35,4 @@ require (
 	modernc.org/sqlite v1.25.0 // indirect
 )
 
-replace github.com/cryptopunkscc/astrald => ../astrald
+//replace github.com/cryptopunkscc/astrald => ../astrald
