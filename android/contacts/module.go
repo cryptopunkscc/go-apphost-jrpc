@@ -6,7 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/node/assets"
 	"github.com/cryptopunkscc/astrald/node/modules"
-	rpc "github.com/cryptopunkscc/go-apphost-jrpc"
+	"github.com/cryptopunkscc/go-apphost-jrpc"
 )
 
 const ServiceName = "contacts"
@@ -47,7 +47,7 @@ func (m *Module) RouteQuery(
 		return nil, net.ErrRejected
 	}
 	return net.Accept(query, caller, func(conn net.SecureConn) {
-		rpc.Handle(ctx, query.Query(), conn, func(ctx2 context.Context, rpc rpc.Conn) any {
+		jrpc.Handle(ctx, query.Query(), conn, func(ctx2 context.Context, rpc jrpc.Conn) any {
 			return &service{
 				Module: m,
 				parent: ctx,

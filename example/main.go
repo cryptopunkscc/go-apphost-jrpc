@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/go-apphost-jrpc"
-	"io"
 	"log"
 	"time"
 )
@@ -15,17 +13,9 @@ func main() {
 	// register service
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		err := rpc.Server[Api]{
-			Accept: func(query *astral.QueryData) (conn io.ReadWriteCloser, err error) {
-				conn, err = query.Accept()
-				conn = rpc.NewConnLogger(conn, log.New(log.Writer(), "service ", 0))
-				return
-			},
-			Handler: func(ctx context.Context, conn rpc.Conn) Api {
-				return NewApiService()
-			},
-		}.Run(ctx)
-		if err != nil {
+		if err := jrpc.NewServer(NewApiService).
+			Logger(log.New(log.Writer(), "service ", 0)).
+			Run(ctx); err != nil {
 			panic(err)
 		}
 	}()
@@ -33,19 +23,19 @@ func main() {
 
 	var err error
 	//rpcConn, err := rpc.QueryFlow(id.Identity{}, apiService{}.String())
-	rpcConn := rpc.NewRequest(id.Identity{}, apiService{}.String())
-	rpcConn.WithLogger(log.New(log.Writer(), " client ", 0))
+	rpcConn := jrpc.NewRequest(id.Identity{}, apiService{}.String()).
+		WithLogger(log.New(log.Writer(), " client ", 0))
 	if err != nil {
 		panic(err)
 	}
 
 	// case
-	if _, err = rpc.Query[[]string](rpcConn, "api"); err != nil {
+	if _, err = jrpc.Query[[]string](rpcConn, "api"); err != nil {
 		panic(err)
 	}
 
 	// case
-	if _, err = rpc.Query[string](rpcConn, "string"); err != nil {
+	if _, err = jrpc.Query[string](rpcConn, "string"); err != nil {
 		panic(err)
 	}
 

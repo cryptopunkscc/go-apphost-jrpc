@@ -5,16 +5,17 @@ import (
 )
 
 func (srv service) ListPresence() (c []Contact) {
-	m := srv.node.Modules().Find("presence").(*presence.Module)
-	recent := m.Discover.RecentAds()
-	for _, ad := range recent {
-		if ad != nil {
-			c = append(c, Contact{
-				Id:    ad.Identity.String(),
-				Alias: ad.Alias,
-			})
-		}
-	}
+	// TODO fix compatibility
+	//m := srv.node.Modules().Find("presence").(*presence.Module)
+	//recent := m.Discover.RecentAds()
+	//for _, ad := range recent {
+	//	if ad != nil {
+	//		c = append(c, Contact{
+	//			Id:    ad.Identity.String(),
+	//			Alias: ad.Alias,
+	//		})
+	//	}
+	//}
 	return
 }
 

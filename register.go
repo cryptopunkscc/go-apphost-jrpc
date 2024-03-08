@@ -1,4 +1,4 @@
-package rpc
+package jrpc
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
+	"log"
 	"reflect"
 	"strings"
 )
@@ -14,6 +15,26 @@ import (
 type Server[T any] struct {
 	Accept  func(query *astral.QueryData) (io.ReadWriteCloser, error)
 	Handler func(ctx context.Context, conn Conn) T
+}
+
+func NewServer[T any](handler func(ctx context.Context, conn Conn) T) *Server[T] {
+	return &Server[T]{Handler: handler, Accept: acceptAll}
+}
+
+func (s Server[T]) Middleware(accept func(query *astral.QueryData) (io.ReadWriteCloser, error)) Server[T] {
+	s.Accept = accept
+	return s
+}
+
+func (s Server[T]) Logger(logger *log.Logger) Server[T] {
+	accept := s.Accept
+	s.Accept = func(query *astral.QueryData) (conn io.ReadWriteCloser, err error) {
+		if conn, err = accept(query); err == nil {
+			conn = NewConnLogger(conn, logger)
+		}
+		return
+	}
+	return s
 }
 
 func (s Server[T]) Run(ctx context.Context) (err error) {

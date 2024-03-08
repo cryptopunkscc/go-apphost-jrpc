@@ -2,18 +2,18 @@ package contacts
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	rpc "github.com/cryptopunkscc/go-apphost-jrpc"
+	"github.com/cryptopunkscc/go-apphost-jrpc"
 )
 
 type Client struct {
-	rpc.Conn
+	jrpc.Conn
 }
 
 func (c Client) Connect(identity id.Identity, port string) (client Client, err error) {
-	client.Conn, err = rpc.QueryFlow(identity, port)
+	client.Conn, err = jrpc.QueryFlow(identity, port)
 	return
 }
 
 func (c Client) Contacts() (<-chan []Contact, error) {
-	return rpc.Subscribe[[]Contact](c, "contacts")
+	return jrpc.Subscribe[[]Contact](c, "contacts")
 }

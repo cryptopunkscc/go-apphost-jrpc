@@ -3,7 +3,7 @@ package notify
 import (
 	"context"
 	"fmt"
-	rpc "github.com/cryptopunkscc/go-apphost-jrpc"
+	"github.com/cryptopunkscc/go-apphost-jrpc"
 	"github.com/cryptopunkscc/go-apphost-jrpc/android"
 	"github.com/stretchr/testify/assert"
 	"log"
@@ -35,8 +35,8 @@ func ConnectTestClient(t *testing.T) (ApiClient, func()) {
 func TestServer(t *testing.T, err bool) (cancelFunc context.CancelFunc) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	go func() {
-		err := rpc.Server[testService]{
-			Handler: func(ctx context.Context, conn rpc.Conn) (ts testService) {
+		err := jrpc.Server[testService]{
+			Handler: func(ctx context.Context, conn jrpc.Conn) (ts testService) {
 				ts.err = err
 				return
 			},
