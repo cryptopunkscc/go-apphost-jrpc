@@ -86,6 +86,7 @@ func handleQuery(
 		return
 	}
 	defer conn.Close()
+	log.Println("handling query:", data.Query())
 
 	Handle(ctx, data.Query(), conn, service)
 }
@@ -124,7 +125,6 @@ func Handle(
 
 func handleConn(ctx context.Context, query string, rpc Conn, srv any) error {
 	for ctx.Err() == nil {
-
 		m := method{}
 		if mm, _ := strings.CutPrefix(query, fmt.Sprint(srv)); mm != "" {
 			// decode method from query
@@ -209,8 +209,14 @@ func invoke(service any, method method) (a any, err error) {
 
 		if m.IsExported() && strings.EqualFold(m.Name, method.name) {
 
+			if len(method.raw) < m.Func.Type().NumIn()-1 {
+				err = fmt.Errorf("%v: %s Call with too few input arguments", service, method.name)
+				return
+			}
+
 			// decode arguments
 			var values = []reflect.Value{reflect.ValueOf(service)}
+
 			for i := 0; i < len(method.raw); i++ {
 				at := m.Type.In(i + 1)
 				av := reflect.New(at)
