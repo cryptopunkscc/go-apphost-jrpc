@@ -7,20 +7,22 @@ import (
 )
 
 type Conn interface {
-	io.ReadWriteCloser
-	WithLogger(logger *log.Logger) Conn
+	io.WriteCloser
+	ByteScannerReader
+	Logger(logger *log.Logger)
 	Copy() Conn
+	Call(method string, value any) (err error)
 	Encode(value any) (err error)
 	Decode(value any) (err error)
 	Flush()
 }
 
-func Call(conn Conn, name string, args ...any) error {
-	payload := []any{name}
-	if args != nil && len(args) > 0 {
-		payload = append(payload, args...)
+func Call(conn Conn, name string, args ...any) (err error) {
+	var payload any
+	if len(args) > 0 {
+		payload = args
 	}
-	return conn.Encode(payload)
+	return conn.Call(name, payload)
 }
 
 func Decode[R any](conn Conn) (r R, err error) {
@@ -35,12 +37,12 @@ func Await(conn Conn) (err error) {
 }
 
 func Command(conn Conn, method string, args ...any) (err error) {
-	c := conn.Copy()
+	conn = conn.Copy()
 	defer conn.Flush()
-	if err = Call(c, method, args...); err != nil {
+	if err = Call(conn, method, args...); err != nil {
 		return
 	}
-	if err = Await(c); errors.Is(err, io.EOF) {
+	if err = Await(conn); errors.Is(err, io.EOF) {
 		err = nil
 	}
 	return

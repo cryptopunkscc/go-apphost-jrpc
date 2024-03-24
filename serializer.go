@@ -5,41 +5,103 @@ import (
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"io"
+	"log"
 )
 
 type Serializer struct {
-	io.ReadWriteCloser
-	enc      *json.Encoder
-	dec      *json.Decoder
-	remoteID id.Identity
+	io.WriteCloser
+	ByteScannerReader
+	logger    *ConnLogger
+	enc       Encoder
+	dec       Decoder
+	marshal   Marshal
+	unmarshal Unmarshal
+	remoteID  id.Identity
+	codecs    Codecs
 }
 
-func (conn *Serializer) RemoteIdentity() id.Identity {
-	return conn.remoteID
+type Encoder interface{ Encode(v any) error }
+type Decoder interface{ Decode(v any) error }
+type Marshal func(v any) ([]byte, error)
+type Unmarshal func(data []byte, v any) error
+type RemoteIdInfo interface{ RemoteIdentity() id.Identity }
+type Codecs func(io.ReadWriter) (Encoder, Decoder, Marshal, Unmarshal)
+
+func (s *Serializer) RemoteIdentity() (i id.Identity) {
+	return s.remoteID
 }
 
-func (conn *Serializer) Encode(value any) (err error) {
+func (s *Serializer) Codecs(codecs Codecs) {
+	s.codecs = codecs
+}
+
+func (s *Serializer) Logger(logger *log.Logger) {
+	s.setLogger(logger)
+	s.setupEncoding()
+}
+
+func (s *Serializer) setLogger(logger *log.Logger) {
+	if s.logger == nil {
+		s.logger = NewConnLogger(s, logger)
+	} else {
+		s.logger.Logger = logger
+	}
+}
+
+func (s *Serializer) setupEncoding() {
+	if s.codecs == nil {
+		s.codecs = JsonCodecs
+	}
+	var rw io.ReadWriter = s
+	if s.logger != nil {
+		rw = s.logger
+	}
+	s.enc, s.dec, s.marshal, s.unmarshal = s.codecs(rw)
+}
+
+func JsonCodecs(rw io.ReadWriter) (e Encoder, d Decoder, m Marshal, u Unmarshal) {
+	e = json.NewEncoder(rw)
+	d = json.NewDecoder(rw)
+	m = json.Marshal
+	u = json.Unmarshal
+	return
+}
+
+func (s *Serializer) setConn(conn io.ReadWriteCloser) {
+	s.WriteCloser = conn
+	s.ByteScannerReader = NewByteScannerReader(conn)
+	s.setupEncoding()
+	s.setupRemoteID()
+}
+
+func (s *Serializer) setupRemoteID() {
+	if info, ok := s.WriteCloser.(RemoteIdInfo); ok {
+		s.remoteID = info.RemoteIdentity()
+	}
+}
+
+func (s *Serializer) Encode(value any) (err error) {
 	r := value
 	switch v := value.(type) {
 	case error:
 		r = Failure{v.Error()}
 	}
-	return conn.enc.Encode(r)
+	return s.enc.Encode(r)
 }
 
-func (conn *Serializer) Decode(value any) (err error) {
+func (s *Serializer) Decode(value any) (err error) {
 	// decode raw value
 	r := raw{}
-	if err = conn.dec.Decode(&r); err != nil {
+	if err = s.dec.Decode(&r); err != nil {
 		return
 	}
 
 	// try decode as failure
 	f := Failure{}
-	if err = json.Unmarshal(r.bytes, &f); err == nil && f.Error != "" {
+	if err = s.unmarshal(r.bytes, &f); err == nil && f.Error != "" {
 		return errors.New(f.Error)
 	}
 
 	// decode value
-	return json.Unmarshal(r.bytes, value)
+	return s.unmarshal(r.bytes, value)
 }

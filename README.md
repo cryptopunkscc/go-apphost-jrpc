@@ -1,6 +1,6 @@
-# Apphost JSON RPC
+# Astral RPC
 
-Basic extension to [lib astral](https://github.com/cryptopunkscc/astrald/tree/master/lib/astral). Provides a convenient wrapper for custom JSON RPC protocol.
+Basic extension to [lib astral](https://github.com/cryptopunkscc/astrald/tree/master/lib/astral). Provides a convenient wrapper for RPC protocol with customizable encoding.
 
 
 ## Usage
@@ -14,21 +14,13 @@ import rpc "github.com/cryptopunkscc/go-apphost-jrpc"
 
 type service struct{}
 
-func newService(_ *rpc.Conn) *service {
-	return &service{}
-}
-
-func (s service) String() string {
-	return "simple_calc"
-}
-
 func (s service) Sum(a int, b int) (c int, err error) {
 	c = a + b
 	return
 }
 
 func main() {
-	err := rpc.Server[service]{Handler: newService}.Run()
+	err := rpc.NewApp("simple_calc").Run(service{})
 	if err != nil {
 		panic(err)   
 	}
@@ -57,12 +49,29 @@ See more comprehensive [example](./example).
 
 ## Protocol 
 
-The client can request data from Service by sending a method represented by a JSON array, where the first element is a method name and the rest are positional arguments.
+The general format of request is a command name followed byt arguments in a know format. 
 
 example method:
 
+```
+<method name><arguments>
+```
+
+### Clir
+
+The client can request data from Service by sending a method followed by commandline arguments.
+
+
+```shell
+methodName 1 true "string arg" -name "object arg"
+```
+
+### Json
+
+The client can request data from Service by sending a method followed by positional arguments packed in array.
+
 ```json
-["methodName", 1, true, "string arg", {"name": "object arg"}]
+methodName[1, true, "string arg", {"name": "object arg"}]
 ```
 
 The service can respond by sending:

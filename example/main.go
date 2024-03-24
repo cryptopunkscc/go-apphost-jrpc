@@ -12,22 +12,35 @@ func main() {
 
 	// register service
 	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		if err := jrpc.NewServer(NewApiService).
-			Logger(log.New(log.Writer(), "service ", 0)).
-			Run(ctx); err != nil {
-			panic(err)
-		}
-	}()
+
+	srv := NewApiService()
+	rpc := jrpc.NewApp("testApi")
+	rpc.Routes(
+		"*",
+		//"method*",
+		//"method1",
+	)
+	rpc.Interface(srv)
+	rpc.Logger(log.New(log.Writer(), "service ", 0))
+	//rpc.Func("method", srv.Method)
+	//rpc.Func("method1", srv.Method1)
+	//rpc.Func("method2", srv.Method2)
+	//rpc.Func("method2B", srv.Method2B)
+	//rpc.Func("methodC", srv.MethodC
+	//rpc.Func("method2S", srv.Method2S)
+	if err := rpc.Run(ctx); err != nil {
+		panic(err)
+	}
+
 	time.Sleep(time.Millisecond * 100)
 
 	var err error
-	//rpcConn, err := rpc.QueryFlow(id.Identity{}, apiService{}.String())
-	rpcConn := jrpc.NewRequest(id.Identity{}, apiService{}.String()).
-		WithLogger(log.New(log.Writer(), " client ", 0))
+	rpcConn, err := jrpc.QueryFlow(id.Identity{}, "testApi")
+	//rpcConn := jrpc.NewRequest(id.Identity{}, "testApi")
 	if err != nil {
 		panic(err)
 	}
+	rpcConn.Logger(log.New(log.Writer(), " client ", 0))
 
 	// case
 	if _, err = jrpc.Query[[]string](rpcConn, "api"); err != nil {

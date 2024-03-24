@@ -1,6 +1,7 @@
 package contacts
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/net"
 	"github.com/cryptopunkscc/astrald/sig"
 	"time"
@@ -16,12 +17,12 @@ type Link struct {
 	Latency  time.Duration
 }
 
-func (srv service) Links() <-chan []Link {
+func (srv service) Links(ctx context.Context) <-chan []Link {
 	c := make(chan []Link)
 	go func() {
 		c <- srv.links()
 
-		events := srv.node.Network().Events().Subscribe(srv.ctx)
+		events := srv.node.Network().Events().Subscribe(ctx)
 		for range events {
 			c <- srv.links()
 		}
@@ -29,8 +30,8 @@ func (srv service) Links() <-chan []Link {
 	return c
 }
 
-func (m *Module) links() (contacts []Link) {
-	for _, l := range m.node.Network().Links().All() {
+func (srv service) links() (contacts []Link) {
+	for _, l := range srv.node.Network().Links().All() {
 		if l == nil {
 			continue
 		}
@@ -48,7 +49,7 @@ func (m *Module) links() (contacts []Link) {
 		c := Link{
 			Id:       l.ID(),
 			RemoteId: l.RemoteIdentity().String(),
-			Remote:   m.node.Resolver().DisplayName(l.RemoteIdentity()),
+			Remote:   srv.node.Resolver().DisplayName(l.RemoteIdentity()),
 			Network:  net.Network(l),
 			Idle:     idle,
 			Since:    time.Since(l.AddedAt()).Round(time.Second),

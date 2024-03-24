@@ -1,11 +1,13 @@
 package contacts
 
+import "context"
+
 type Contact struct {
 	Id    string
 	Alias string
 }
 
-func (srv service) Contacts() (rc <-chan []Contact, err error) {
+func (srv service) Contacts(ctx context.Context) (rc <-chan []Contact, err error) {
 	c := make(chan []Contact)
 	rc = c
 	go func() {
@@ -13,7 +15,7 @@ func (srv service) Contacts() (rc <-chan []Contact, err error) {
 		if err = srv.sendContacts(c); err != nil {
 			return
 		}
-		events := srv.node.Network().Events().Subscribe(srv.ctx)
+		events := srv.node.Network().Events().Subscribe(ctx)
 		for range events {
 			if err = srv.sendContacts(c); err != nil {
 				return

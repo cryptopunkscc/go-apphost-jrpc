@@ -8,7 +8,7 @@ import (
 )
 
 func TestClient_All(t *testing.T) {
-	cancelServer := TestServer(t, true)
+	cancelServer := TestServer(true)
 	defer cancelServer()
 
 	t.Run("Create", func(t *testing.T) {

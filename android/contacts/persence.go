@@ -1,6 +1,7 @@
 package contacts
 
 import (
+	"context"
 	"github.com/cryptopunkscc/astrald/mod/presence/src"
 )
 
@@ -19,11 +20,11 @@ func (srv service) ListPresence() (c []Contact) {
 	return
 }
 
-func (srv service) Presence() <-chan Contact {
+func (srv service) Presence(ctx context.Context) <-chan Contact {
 	rc := make(chan Contact)
 	go func() {
 		defer close(rc)
-		events := srv.node.Events().Subscribe(srv.ctx)
+		events := srv.node.Events().Subscribe(ctx)
 		for event := range events {
 			switch e := event.(type) {
 			case presence.EventAdReceived:

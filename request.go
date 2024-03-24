@@ -5,20 +5,11 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
-	"log"
 )
 
 type Request struct {
-	Serializer
-	service   string
-	newLogger func(closer io.ReadWriteCloser) io.ReadWriteCloser
-}
-
-func (r *Request) WithLogger(logger *log.Logger) Conn {
-	r.newLogger = func(conn io.ReadWriteCloser) io.ReadWriteCloser {
-		return NewConnLogger(conn, logger)
-	}
-	return r
+	*Serializer
+	service string
 }
 
 func NewRequest(
@@ -26,7 +17,7 @@ func NewRequest(
 	service string,
 ) Conn {
 	return &Request{
-		Serializer: Serializer{
+		Serializer: &Serializer{
 			remoteID: identity,
 		},
 		service: service,
@@ -34,30 +25,42 @@ func NewRequest(
 }
 
 func (r *Request) Copy() Conn {
-	c := *r
-	return &c
+	return NewRequest(r.remoteID, r.service)
 }
 
 func (r *Request) Flush() {
-	if r.ReadWriteCloser != nil {
-		_ = r.ReadWriteCloser.Close()
+	if r.WriteCloser != nil {
+		_ = r.WriteCloser.Close()
 	}
 }
 
-func (r *Request) Encode(value any) (err error) {
-	u := r.service
+func (r *Request) Call(method string, value any) (err error) {
+	query := r.service
+	if method != "" {
+		query += "." + method
+	}
 
-	if r.ReadWriteCloser, err = astral.Query(r.remoteID, u); err != nil {
+	// marshal args
+	if value != nil {
+		args, err := json.Marshal(value)
+		if err != nil {
+			return err
+		}
+		query += string(args)
+	}
+
+	// log query
+	if r.logger != nil {
+		r.logger.Println("> " + query)
+	}
+
+	// query stream
+	var conn io.ReadWriteCloser
+	if conn, err = astral.Query(r.RemoteIdentity(), query); err != nil {
 		return
 	}
-	logger := r.ReadWriteCloser
-	if r.newLogger != nil {
-		logger = r.newLogger(logger)
-	}
-	r.enc = json.NewEncoder(logger)
-	r.dec = json.NewDecoder(logger)
 
-	err = r.Serializer.Encode(value)
-
+	// setup
+	r.setConn(conn)
 	return
 }

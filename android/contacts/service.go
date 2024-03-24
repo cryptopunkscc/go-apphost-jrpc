@@ -1,13 +1,11 @@
 package contacts
 
 import (
-	"context"
-	rpc "github.com/cryptopunkscc/go-apphost-jrpc"
+	"github.com/cryptopunkscc/astrald/log"
+	"github.com/cryptopunkscc/astrald/node/modules"
 )
 
 type service struct {
-	*Module
-	parent context.Context
-	ctx    context.Context
-	conn   rpc.Conn
+	log  *log.Logger
+	node modules.Node
 }

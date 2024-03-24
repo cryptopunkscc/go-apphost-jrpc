@@ -2,7 +2,6 @@ package notify
 
 import (
 	"github.com/cryptopunkscc/astrald/auth/id"
-	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/go-apphost-jrpc"
 	"github.com/cryptopunkscc/go-apphost-jrpc/android"
 )
@@ -21,10 +20,7 @@ func (c *Client) Connect() (err error) {
 	if c.port == "" {
 		c.port = android.NotifyPort
 	}
-	conn, err := astral.Query(c.Identity, c.port)
-	if err == nil {
-		c.Conn = jrpc.NewFlow(conn)
-	}
+	c.Conn, err = jrpc.QueryFlow(c.Identity, c.port)
 	return
 }
 

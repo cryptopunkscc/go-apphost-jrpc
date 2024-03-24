@@ -1,28 +1,27 @@
 package main
 
 import (
-	"context"
 	"errors"
-	rpc "github.com/cryptopunkscc/go-apphost-jrpc"
 	"time"
 )
 
 type apiService struct {
-	conn rpc.Conn
 }
 
-func NewApiService(_ context.Context, conn rpc.Conn) Api {
-	return &apiService{conn: conn}
+func NewApiService() Api {
+	return &apiService{}
 }
 
 func (a apiService) String() string {
-	return "testApi"
+	return "testApi."
 }
 
+func (a apiService) MethodAuth() bool { return true }
 func (a apiService) Method(_ bool, _ int, _ string) {
 	// no-op
 }
 
+func (a apiService) Method1Auth() bool { return true }
 func (a apiService) Method1(b bool) (err error) {
 	if b {
 		err = errors.New("example error")
