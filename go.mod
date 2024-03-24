@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/cryptopunkscc/astrald v0.0.0-20240220164229-d072469516dc
+	github.com/leaanthony/clir v1.6.0
 	github.com/stretchr/testify v1.9.0
 )
 

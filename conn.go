@@ -8,6 +8,7 @@ import (
 
 type Conn interface {
 	io.ReadWriteCloser
+	io.ByteScanner
 	WithLogger(logger *log.Logger) Conn
 	Copy() Conn
 	Encode(value any) (err error)

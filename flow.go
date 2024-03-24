@@ -12,11 +12,13 @@ import (
 type Flow struct{ Serializer }
 
 func NewFlow(conn io.ReadWriteCloser) Conn {
+	sc := NewReadWriteCloserScanner(conn)
 	s := Flow{
 		Serializer{
-			ReadWriteCloser: conn,
-			enc:             json.NewEncoder(conn),
-			dec:             json.NewDecoder(conn),
+			ReadWriteCloser: sc,
+			ByteScanner:     sc,
+			enc:             json.NewEncoder(sc),
+			dec:             json.NewDecoder(sc),
 		},
 	}
 	switch conn2 := conn.(type) {

@@ -50,9 +50,13 @@ func (r *Request) Encode(value any) (err error) {
 	if r.ReadWriteCloser, err = astral.Query(r.remoteID, u); err != nil {
 		return
 	}
-	logger := r.ReadWriteCloser
+	s := NewReadWriteCloserScanner(r.ReadWriteCloser)
+	r.ReadWriteCloser = s
+	r.ByteScanner = s
+
+	var logger io.ReadWriteCloser = s
 	if r.newLogger != nil {
-		logger = r.newLogger(logger)
+		logger = r.newLogger(s)
 	}
 	r.enc = json.NewEncoder(logger)
 	r.dec = json.NewDecoder(logger)
