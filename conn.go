@@ -4,24 +4,38 @@ import (
 	"errors"
 	"io"
 	"log"
+	"reflect"
 )
 
 type Conn interface {
-	io.ReadWriteCloser
-	io.ByteScanner
+	ByteScannerReadWriteCloser
 	WithLogger(logger *log.Logger) Conn
 	Copy() Conn
+	Call(method string, value any) (err error)
 	Encode(value any) (err error)
 	Decode(value any) (err error)
 	Flush()
 }
 
-func Call(conn Conn, name string, args ...any) error {
-	payload := []any{name}
-	if args != nil && len(args) > 0 {
-		payload = append(payload, args...)
+func Call(conn Conn, name string, args ...any) (err error) {
+	var payload any
+	switch len(args) {
+	case 0:
+	case 1:
+		payload = args[0]
+		var value = reflect.ValueOf(payload)
+		if value.Kind() == reflect.Pointer {
+			value = reflect.ValueOf(payload).Elem()
+		}
+		switch value.Kind() {
+		case reflect.Struct, reflect.Array:
+		default:
+			payload = args
+		}
+	default:
+		payload = args
 	}
-	return conn.Encode(payload)
+	return conn.Call(name, payload)
 }
 
 func Decode[R any](conn Conn) (r R, err error) {
@@ -36,12 +50,12 @@ func Await(conn Conn) (err error) {
 }
 
 func Command(conn Conn, method string, args ...any) (err error) {
-	c := conn.Copy()
+	conn = conn.Copy()
 	defer conn.Flush()
-	if err = Call(c, method, args...); err != nil {
+	if err = Call(conn, method, args...); err != nil {
 		return
 	}
-	if err = Await(c); errors.Is(err, io.EOF) {
+	if err = Await(conn); errors.Is(err, io.EOF) {
 		err = nil
 	}
 	return

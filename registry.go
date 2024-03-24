@@ -3,6 +3,7 @@ package jrpc
 type Registry[V any] struct {
 	next  map[byte]*Registry[V]
 	value V
+	empty V
 }
 
 func NewRegistry[V any]() *Registry[V] {
@@ -39,4 +40,18 @@ func (n *Registry[V]) Unfold(str string) (string, V) {
 		return str, n.value
 	}
 	return nn.Unfold(str[1:])
+}
+
+func (n *Registry[V]) All(str []byte, m map[string]V) {
+	for b, r := range n.next {
+		s := append(str, b)
+		var value any = r.value
+		var empty any = r.empty
+		if value != empty {
+			m[string(s)] = r.value
+		}
+		if len(r.next) > 0 {
+			r.All(s, m)
+		}
+	}
 }

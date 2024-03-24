@@ -11,28 +11,33 @@ import (
 
 type ArgsDecoder interface {
 	Test([]byte) bool
-	TestS(stream io.ByteScanner) bool
+	TestScan(stream io.ByteScanner) bool
 	Begin() []rune
 	Unmarshal(bytes []byte, args []any) error
-	Decode(conn *ReadScanner, args []any) error
+	Decode(conn ByteScannerReader, args []any) error
 }
 
 type argsDecoders struct {
 	decoders []ArgsDecoder
 }
 
-func (a argsDecoders) TestS(scan io.ByteScanner) bool {
+func (a *argsDecoders) Append(decoders []ArgsDecoder) *argsDecoders {
+	a.decoders = append(a.decoders, decoders...)
+	return a
+}
+
+func (a *argsDecoders) TestScan(scan io.ByteScanner) bool {
 	for _, decoder := range a.decoders {
-		if decoder.TestS(scan) {
+		if decoder.TestScan(scan) {
 			return true
 		}
 	}
 	return false
 }
 
-func (a argsDecoders) Decode(conn *ReadScanner, args []any) error {
+func (a *argsDecoders) Decode(conn ByteScannerReader, args []any) error {
 	for _, decoder := range a.decoders {
-		if decoder.TestS(conn) {
+		if decoder.TestScan(conn) {
 			return decoder.Decode(conn, args)
 		}
 	}
@@ -43,7 +48,7 @@ func NewArgsDecoders(decoders ...ArgsDecoder) ArgsDecoder {
 	return &argsDecoders{decoders}
 }
 
-func (a argsDecoders) Test(bytes []byte) bool {
+func (a *argsDecoders) Test(bytes []byte) bool {
 	for _, decoder := range a.decoders {
 		if decoder.Test(bytes) {
 			return true
@@ -52,14 +57,14 @@ func (a argsDecoders) Test(bytes []byte) bool {
 	return false
 }
 
-func (a argsDecoders) Begin() (r []rune) {
+func (a *argsDecoders) Begin() (r []rune) {
 	for _, decoder := range a.decoders {
 		r = append(r, decoder.Begin()...)
 	}
 	return
 }
 
-func (a argsDecoders) Unmarshal(bytes []byte, args []any) error {
+func (a *argsDecoders) Unmarshal(bytes []byte, args []any) error {
 	for _, decoder := range a.decoders {
 		if decoder.Test(bytes) {
 			return decoder.Unmarshal(bytes, args)
@@ -85,7 +90,7 @@ func (d jsonArgsDecoder) Test(b []byte) bool {
 	return b[0] == '[' || b[0] == '{'
 }
 
-func (d jsonArgsDecoder) TestS(scan io.ByteScanner) bool {
+func (d jsonArgsDecoder) TestScan(scan io.ByteScanner) bool {
 	b, err := scan.ReadByte()
 	if err != nil {
 		return false
@@ -122,7 +127,7 @@ func (d jsonArgsDecoder) Unmarshal(bytes []byte, args []any) error {
 	return json.Unmarshal(bytes, &args)
 }
 
-func (d jsonArgsDecoder) Decode(conn *ReadScanner, args []any) error {
+func (d jsonArgsDecoder) Decode(conn ByteScannerReader, args []any) error {
 	jd := json.NewDecoder(conn)
 	if len(args) == 1 {
 		// unmarshal struct payload to as first arg
@@ -158,12 +163,23 @@ func (d jsonArgsDecoder) Decode(conn *ReadScanner, args []any) error {
 
 type clirArgsDecoder struct{}
 
-func (d clirArgsDecoder) Decode(conn *ReadScanner, args []any) (err error) {
-	var b byte
+func (d clirArgsDecoder) Decode(conn ByteScannerReader, args []any) (err error) {
+	end := []byte(`\n`)
+	b := byte(0)
+	var s = 0
 	var n = 0
-	for b, err = conn.ReadByte(); b != '\n'; n++ {
-		if err != nil {
+	for {
+		if b, err = conn.ReadByte(); err != nil {
 			return
+		}
+		n++
+		if b != end[s] {
+			s = 0
+			continue
+		}
+		s++
+		if s == len(end) {
+			break
 		}
 	}
 	for i := 0; i < n; i++ {
@@ -173,6 +189,7 @@ func (d clirArgsDecoder) Decode(conn *ReadScanner, args []any) (err error) {
 	if _, err = conn.Read(bytes); err != nil {
 		return
 	}
+	bytes = bytes[:len(bytes)-2]
 	err = d.Unmarshal(bytes, args)
 	return
 }
@@ -187,7 +204,7 @@ func (d clirArgsDecoder) Test(b []byte) bool {
 	return b[0] == '$' || b[0] == ' '
 }
 
-func (d clirArgsDecoder) TestS(scan io.ByteScanner) bool {
+func (d clirArgsDecoder) TestScan(scan io.ByteScanner) bool {
 	b, err := scan.ReadByte()
 	_ = scan.UnreadByte()
 	if err != nil {

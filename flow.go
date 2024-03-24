@@ -11,8 +11,8 @@ import (
 
 type Flow struct{ Serializer }
 
-func NewFlow(conn io.ReadWriteCloser) Conn {
-	sc := NewReadWriteCloserScanner(conn)
+func NewFlow(conn io.ReadWriteCloser) *Flow {
+	sc := NewByteScannerReadWriteCloser(conn)
 	s := Flow{
 		Serializer{
 			ReadWriteCloser: sc,
@@ -39,10 +39,24 @@ func QueryFlow(identity id.Identity, service string) (s Conn, err error) {
 }
 
 func (conn *Flow) WithLogger(logger *log.Logger) Conn {
-	connLogger := NewConnLogger(conn.ReadWriteCloser, logger)
-	conn.enc = json.NewEncoder(connLogger)
-	conn.dec = json.NewDecoder(connLogger)
+	conn.logger = NewConnLogger(conn.ReadWriteCloser, logger)
+	conn.enc = json.NewEncoder(conn.logger)
+	conn.dec = json.NewDecoder(conn.logger)
 	return conn
+}
+
+func (conn *Flow) Call(method string, value any) (err error) {
+	query := []byte(method)
+	if value != nil {
+		var bytes []byte
+		if bytes, err = json.Marshal(value); err != nil {
+			return
+		}
+		query = append(query, bytes...)
+	}
+	query = append(query, []byte("\n")...)
+	_, err = conn.logger.Write(query)
+	return
 }
 
 func (conn *Flow) Copy() Conn {

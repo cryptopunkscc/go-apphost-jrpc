@@ -7,10 +7,8 @@ import (
 	"testing"
 )
 
-func TestNewReadWriteCloserScanner(t *testing.T) {
-	scanner := &ReadWriteCloserScanner{
-		ReadScanner: NewReadScanner(strings.NewReader(`[1,2,3]`)),
-	}
+func TestByteScannerReader(t *testing.T) {
+	scanner := NewByteScannerReader(strings.NewReader(`[1,2,3]`))
 	b, err := scanner.ReadByte()
 	if err != nil {
 		t.Fatal(err)

@@ -4,27 +4,36 @@ import (
 	"io"
 )
 
-type ReadWriteCloserScanner struct {
+type ByteScannerReadWriteCloser interface {
+	io.ByteScanner
+	io.ReadWriteCloser
+}
+type ByteScannerReader interface {
+	io.ByteScanner
+	io.Reader
+}
+
+type byteScannerReadWriteCloser struct {
 	io.WriteCloser
-	*ReadScanner
+	ByteScannerReader
 }
 
-func NewReadWriteCloserScanner(rwc io.ReadWriteCloser) *ReadWriteCloserScanner {
-	return &ReadWriteCloserScanner{WriteCloser: rwc, ReadScanner: NewReadScanner(rwc)}
+func NewByteScannerReadWriteCloser(rwc io.ReadWriteCloser) ByteScannerReadWriteCloser {
+	return &byteScannerReadWriteCloser{WriteCloser: rwc, ByteScannerReader: NewByteScannerReader(rwc)}
 }
 
-type ReadScanner struct {
+type byteScannerReader struct {
 	io.Reader
 	offset int
 	end    int
 	buff   []byte
 }
 
-func NewReadScanner(reader io.Reader) *ReadScanner {
-	return &ReadScanner{Reader: reader}
+func NewByteScannerReader(reader io.Reader) ByteScannerReader {
+	return &byteScannerReader{Reader: reader}
 }
 
-func (r *ReadScanner) ReadByte() (b byte, err error) {
+func (r *byteScannerReader) ReadByte() (b byte, err error) {
 	if r.offset == len(r.buff) {
 		r.buff = append(r.buff, make([]byte, 512)...)
 		l := 0
@@ -39,14 +48,14 @@ func (r *ReadScanner) ReadByte() (b byte, err error) {
 	return
 }
 
-func (r *ReadScanner) UnreadByte() error {
+func (r *byteScannerReader) UnreadByte() error {
 	if r.offset > 0 {
 		r.offset--
 	}
 	return nil
 }
 
-func (r *ReadScanner) Read(p []byte) (n int, err error) {
+func (r *byteScannerReader) Read(p []byte) (n int, err error) {
 	if r.offset == r.end {
 		return r.Reader.Read(p)
 	}
@@ -66,5 +75,5 @@ func (r *ReadScanner) Read(p []byte) (n int, err error) {
 	return
 }
 
-var _ io.ReadWriteCloser = &ReadWriteCloserScanner{}
-var _ io.ByteScanner = &ReadScanner{}
+var _ io.ReadWriteCloser = &byteScannerReadWriteCloser{}
+var _ io.ByteScanner = &byteScannerReader{}

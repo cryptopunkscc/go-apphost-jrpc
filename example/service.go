@@ -16,7 +16,7 @@ func NewApiService(_ context.Context, conn rpc.Conn) Api {
 }
 
 func (a apiService) String() string {
-	return "testApi"
+	return "testApi."
 }
 
 func (a apiService) Method(_ bool, _ int, _ string) {

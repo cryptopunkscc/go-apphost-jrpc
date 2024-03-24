@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"strings"
 	"testing"
 )
 
@@ -95,7 +96,7 @@ func TestExecutor_Call(t *testing.T) {
 				function: testFunc2,
 			},
 			args: args{
-				args: `$ -i 1 -b true -s a`,
+				args: `$ -i 1 -b true -s a \n`,
 			},
 			wantResult: []any{TestArg{I: 1, B: true, TestArg2: TestArg2{S: "a"}}},
 			wantErr:    assert.NoError,
@@ -106,7 +107,7 @@ func TestExecutor_Call(t *testing.T) {
 				function: testFunc4,
 			},
 			args: args{
-				args: ` -i 1 -b true -c 1`,
+				args: ` -i 1 -b true -c 1\n`,
 			},
 			wantResult: []any{TestArg{I: 1, B: true}, TestArg3{C: 1}},
 			wantErr:    assert.NoError,
@@ -117,7 +118,7 @@ func TestExecutor_Call(t *testing.T) {
 				function: testFunc5,
 			},
 			args: args{
-				args: `$ 1 true`,
+				args: `$ 1 true \n`,
 			},
 			wantResult: []any{TestArgPos{I: 1, B: true}},
 			wantErr:    assert.NoError,
@@ -128,7 +129,7 @@ func TestExecutor_Call(t *testing.T) {
 				function: testFunc6,
 			},
 			args: args{
-				args: `$ -s "a" 1 true`,
+				args: `$ -s "a" 1 true \n`,
 			},
 			wantResult: []any{TestArgPos{I: 1, B: true}, TestArg2{"a"}},
 			wantErr:    assert.NoError,
@@ -138,7 +139,7 @@ func TestExecutor_Call(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			exec := NewCaller(tt.fields.env...)
 			exec.Func(tt.fields.function)
-			gotResult, err := exec.Call(tt.args.args)
+			gotResult, err := exec.Call(NewByteScannerReader(strings.NewReader(tt.args.args)))
 			if !tt.wantErr(t, err, fmt.Sprintf("Call(%v)", tt.args.args)) {
 				return
 			}

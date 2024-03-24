@@ -10,6 +10,7 @@ import (
 type Serializer struct {
 	io.ReadWriteCloser
 	io.ByteScanner
+	logger   *ConnLogger
 	enc      *json.Encoder
 	dec      *json.Decoder
 	remoteID id.Identity

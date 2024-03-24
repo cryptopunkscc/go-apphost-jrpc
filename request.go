@@ -6,6 +6,7 @@ import (
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
 	"log"
+	"strings"
 )
 
 type Request struct {
@@ -44,24 +45,39 @@ func (r *Request) Flush() {
 	}
 }
 
-func (r *Request) Encode(value any) (err error) {
-	u := r.service
+func (r *Request) Call(method string, value any) (err error) {
+	query := strings.TrimSuffix(r.service, "*") + method
 
-	if r.ReadWriteCloser, err = astral.Query(r.remoteID, u); err != nil {
+	// marshal args
+	if value != nil {
+		args, err := json.Marshal(value)
+		if err != nil {
+			return err
+		}
+		query += string(args)
+	}
+
+	// query stream
+	if r.ReadWriteCloser, err = astral.Query(r.remoteID, query); err != nil {
 		return
 	}
-	s := NewReadWriteCloserScanner(r.ReadWriteCloser)
+
+	// wrap stream
+	s := NewByteScannerReadWriteCloser(r.ReadWriteCloser)
 	r.ReadWriteCloser = s
 	r.ByteScanner = s
 
+	// set logger
 	var logger io.ReadWriteCloser = s
 	if r.newLogger != nil {
 		logger = r.newLogger(s)
+		r.logger, _ = logger.(*ConnLogger)
+		if r.logger != nil {
+			r.logger.Println("> " + query)
+		}
 	}
 	r.enc = json.NewEncoder(logger)
 	r.dec = json.NewDecoder(logger)
-
-	err = r.Serializer.Encode(value)
 
 	return
 }

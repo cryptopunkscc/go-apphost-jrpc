@@ -5,9 +5,9 @@ import (
 )
 
 type Caller struct {
-	env      []any
-	decoders []ArgsDecoder
-	f        reflect.Value
+	env     []any
+	decoder argsDecoders
+	f       reflect.Value
 }
 
 func NewCaller(env ...any) (c *Caller) {
@@ -17,7 +17,7 @@ func NewCaller(env ...any) (c *Caller) {
 	return
 }
 
-func (exec *Caller) New(env ...any) *Caller {
+func (exec *Caller) With(env ...any) *Caller {
 	c := *exec
 	c.env = append(c.env, env...)
 	return &c
@@ -30,24 +30,23 @@ func (exec *Caller) Func(function any) *Caller {
 	return exec
 }
 
-func (exec *Caller) Decoder(decoder ...ArgsDecoder) *Caller {
-	exec.decoders = append(exec.decoders, decoder...)
+func (exec *Caller) Decoder(decoders ...ArgsDecoder) *Caller {
+	return exec.Decoders(decoders)
+}
+
+func (exec *Caller) Decoders(decoders []ArgsDecoder) *Caller {
+	exec.decoder.Append(decoders)
 	return exec
 }
 
-func (exec *Caller) Decoders(decoder []ArgsDecoder) *Caller {
-	exec.decoders = append(exec.decoders, decoder...)
-	return exec
-}
-
-func (exec *Caller) Call(args string) (result []any, err error) {
+func (exec *Caller) Call(args ByteScannerReader) (result []any, err error) {
 	values := make([]reflect.Value, 0)
 
 	for _, a := range exec.env {
 		values = append(values, reflect.ValueOf(a))
 	}
 
-	if values, err = exec.args(exec.f.Type(), values, args); err != nil {
+	if values, err = exec.decodeIn(values, args); err != nil {
 		return
 	}
 
@@ -59,16 +58,16 @@ func (exec *Caller) Call(args string) (result []any, err error) {
 	return
 }
 
-func (exec *Caller) args(t reflect.Type, env []reflect.Value, arg string) (values []reflect.Value, err error) {
-	//values = env
+func (exec *Caller) decodeIn(initial []reflect.Value, args ByteScannerReader) (values []reflect.Value, err error) {
+	t := exec.f.Type()
 
-	for i := 0; i < t.NumIn() && len(env) > 0; i++ {
-		for len(env) > 0 && !env[0].Type().AssignableTo(t.In(i)) {
-			env = env[1:]
+	for i := 0; i < t.NumIn() && len(initial) > 0; i++ {
+		for len(initial) > 0 && !initial[0].Type().AssignableTo(t.In(i)) {
+			initial = initial[1:]
 			continue
 		}
-		if len(env) > 0 {
-			values = append(values, env[0])
+		if len(initial) > 0 {
+			values = append(values, initial[0])
 		}
 	}
 
@@ -82,14 +81,8 @@ func (exec *Caller) args(t reflect.Type, env []reflect.Value, arg string) (value
 	}
 
 	if len(decoded) > 0 {
-		bytes := []byte(arg)
-		for _, d := range exec.decoders {
-			if d.Test(bytes) {
-				if err = d.Unmarshal([]byte(arg), decoded); err != nil {
-					return
-				}
-				break
-			}
+		if err = exec.decoder.Decode(args, decoded); err != nil {
+			return
 		}
 	}
 

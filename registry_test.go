@@ -2,23 +2,10 @@ package jrpc
 
 import (
 	"github.com/stretchr/testify/assert"
-	"log"
 	"testing"
 )
 
-func TestRegistry2(t *testing.T) {
-	var err error = nil
-	arr := []any{"a", "b", err}
-	for n := len(arr) - 1; n > 0 && arr[n] == nil; n-- {
-		arr = arr[0:n]
-	}
-	for _, a := range arr {
-		if err, ok := a.(error); err == nil {
-			log.Println(ok)
-			log.Println(a)
-		}
-	}
-}
+type Foo func()
 
 func TestRegistry(t *testing.T) {
 	r := NewRegistry[any]()
@@ -44,4 +31,20 @@ func TestRegistry(t *testing.T) {
 	s, v = r.Unfold("ccc")
 	assert.Equal(t, nil, v)
 	assert.Equal(t, "ccc", s)
+}
+
+func TestRegistry_All(t *testing.T) {
+	r := NewRegistry[any]()
+	r.Add("a", "a")
+	r.Add("aaa", "aaa")
+	r.Add("bbb", "bbb")
+
+	expected := map[string]any{
+		"a":   "a",
+		"aaa": "aaa",
+		"bbb": "bbb",
+	}
+	actual := make(map[string]any)
+	r.All(nil, actual)
+	assert.Equal(t, expected, actual)
 }
