@@ -12,23 +12,17 @@ func main() {
 
 	// register service
 	ctx, cancel := context.WithCancel(context.Background())
-	//go func() {
-	//	if err := jrpc.NewServer(NewApiService).
-	//		Logger(log.New(log.Writer(), "service ", 0)).
-	//		Run(ctx); err != nil {
-	//		panic(err)
-	//	}
-	//}()
 
-	srv := NewApiService(nil, nil)
+	srv := NewApiService()
 
 	jrpc.NewRouter("testApi.*").
-		Func("method", srv.Method).
-		Func("method1", srv.Method1).
-		Func("method2", srv.Method2).
-		Func("method2B", srv.Method2B).
-		Func("methodC", srv.MethodC).
-		Func("method2S", srv.Method2S).
+		//Func("method", srv.Method).
+		//Func("method1", srv.Method1).
+		//Func("method2", srv.Method2).
+		//Func("method2B", srv.Method2B).
+		//Func("methodC", srv.MethodC).
+		//Func("method2S", srv.Method2S).
+		Interface(srv).
 		Setup().
 		Register(ctx)
 
@@ -48,9 +42,9 @@ func main() {
 	}
 
 	// case
-	//if _, err = jrpc.Query[string](rpcConn, "string"); err != nil {
-	//	panic(err)
-	//}
+	if _, err = jrpc.Query[string](rpcConn, "string"); err != nil {
+		panic(err)
+	}
 
 	// prepare client
 	client := NewApiClient(rpcConn)

@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
 	"reflect"
 	"strings"
+	"unicode"
 )
 
 type Router struct {
@@ -25,6 +27,21 @@ func NewRouter(routes ...string) *Router {
 
 func (r *Router) Func(name string, function any) *Router {
 	r.registry.Add(name, NewCaller().Func(function))
+	return r
+}
+
+func (r *Router) Interface(srv any) *Router {
+	t := reflect.TypeOf(srv)
+	for i := 0; i < t.NumMethod(); i++ {
+		m := t.Method(i)
+		if !m.IsExported() {
+			continue
+		}
+		f := m.Func.Interface()
+		name := []rune(m.Name)
+		name[0] = unicode.ToLower(name[0])
+		r.registry.Add(string(name), NewCaller(srv).Func(f))
+	}
 	return r
 }
 
@@ -48,7 +65,7 @@ func (r *Router) Route(ctx context.Context, query string, rpc Flow) {
 
 		args, caller := r.registry.Unfold(query)
 		if caller == nil {
-			respond(ctx, rpc, nil, errors.New("route not found"))
+			respond(ctx, rpc, nil, fmt.Errorf("route not found: %s", query))
 			return
 		}
 

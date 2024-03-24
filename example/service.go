@@ -1,18 +1,15 @@
 package main
 
 import (
-	"context"
 	"errors"
-	rpc "github.com/cryptopunkscc/go-apphost-jrpc"
 	"time"
 )
 
 type apiService struct {
-	conn rpc.Conn
 }
 
-func NewApiService(_ context.Context, conn rpc.Conn) Api {
-	return &apiService{conn: conn}
+func NewApiService() Api {
+	return &apiService{}
 }
 
 func (a apiService) String() string {
