@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-type Foo func()
-
 func TestRegistry(t *testing.T) {
 	r := NewRegistry[any]()
 	r.Add("aaa", "a")

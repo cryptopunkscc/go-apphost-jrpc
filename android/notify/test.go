@@ -32,19 +32,9 @@ func ConnectTestClient(t *testing.T) (ApiClient, func()) {
 	}
 }
 
-func TestServer(t *testing.T, err bool) (cancelFunc context.CancelFunc) {
+func TestServer(err bool) (cancelFunc context.CancelFunc) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	go func() {
-		err := jrpc.Server[testService]{
-			Handler: func(ctx context.Context, conn jrpc.Conn) (ts testService) {
-				ts.err = err
-				return
-			},
-		}.Run(ctx)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
+	jrpc.NewRouter(testPort).Interface(testService{err: err}).Register(ctx)
 	time.Sleep(time.Second * 1)
 	return
 }
