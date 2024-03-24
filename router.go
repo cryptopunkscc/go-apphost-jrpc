@@ -177,7 +177,7 @@ func (r *Router) register(ctx context.Context, accept []ApphostMiddleware) (err 
 	defer listener.Close()
 	done := ctx.Done()
 	queries := listener.QueryCh()
-	ack := acceptAllMiddleware
+	ack := AcceptAllMiddleware
 	if len(accept) > 0 {
 		ack = accept[0]
 	}
@@ -188,7 +188,7 @@ func (r *Router) register(ctx context.Context, accept []ApphostMiddleware) (err 
 		case q := <-queries:
 			go func(q *astral.QueryData) {
 				var conn *Flow
-				if conn, err = ack(q); err != nil {
+				if conn, err = ack(q, nil); err != nil {
 					return
 				}
 				r.Route(ctx, q.Query(), *conn)
@@ -198,7 +198,7 @@ func (r *Router) register(ctx context.Context, accept []ApphostMiddleware) (err 
 	}
 }
 
-func acceptAllMiddleware(data *astral.QueryData) (f *Flow, err error) {
+func AcceptAllMiddleware(data *astral.QueryData, _ *Flow) (f *Flow, err error) {
 	conn, err := data.Accept()
 	if err != nil {
 		return
@@ -207,7 +207,7 @@ func acceptAllMiddleware(data *astral.QueryData) (f *Flow, err error) {
 	return
 }
 
-type ApphostMiddleware func(data *astral.QueryData) (*Flow, error)
+type ApphostMiddleware func(data *astral.QueryData, f *Flow) (*Flow, error)
 
 // =================================================================================================
 

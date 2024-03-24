@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/cryptopunkscc/astrald/auth/id"
+	"github.com/cryptopunkscc/astrald/lib/astral"
 	"github.com/cryptopunkscc/go-apphost-jrpc"
 	"log"
 	"time"
@@ -24,7 +25,16 @@ func main() {
 		//Func("method2S", srv.Method2S).
 		Interface(srv).
 		Setup().
-		Register(ctx)
+		Register(ctx,
+			func(data *astral.QueryData, f *jrpc.Flow) (rf *jrpc.Flow, err error) {
+				if rf, err = jrpc.AcceptAllMiddleware(data, f); err != nil {
+					return
+				}
+				l := log.New(log.Writer(), "service ", 0)
+				rf = jrpc.NewFlow(jrpc.NewConnLogger(rf.ReadWriteCloser, l))
+				return
+			},
+		)
 
 	time.Sleep(time.Millisecond * 100)
 
