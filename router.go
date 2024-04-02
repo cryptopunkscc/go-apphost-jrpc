@@ -120,10 +120,6 @@ func (r *Router) Query(query string) *Router {
 	if rr.port == "" {
 		rr.port = r.port
 	}
-	if rr.args == q && q != "" {
-		// nothing was unfolded query cannot be handled
-		rr.registry = NewRegistry[*Caller]()
-	}
 	if rr.args == "\n" {
 		rr.args = ""
 	}

@@ -92,7 +92,7 @@ func TestApp_Run_root(t *testing.T) {
 	})
 	app := NewApp("test")
 	app.Logger(log.New(log.Writer(), "service ", 0))
-	app.Func("a", func(_, identity id.Identity) bool {
+	app.Func("", func(_, identity id.Identity) bool {
 		return identity.IsEqual(id.Anyone)
 	})
 	err := app.Run(ctx)
@@ -118,7 +118,7 @@ func TestApp_Run_root(t *testing.T) {
 		{otherID, false},
 	}
 	for _, expected := range tests {
-		b, err := Query[bool](rpc, "a", expected.id)
+		b, err := Query[bool](rpc, "", expected.id)
 		if err != nil {
 			t.Fatal(err)
 		}
