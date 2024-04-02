@@ -5,6 +5,7 @@ import (
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"io"
 	"log"
+	"reflect"
 )
 
 type Serializer struct {
@@ -67,7 +68,8 @@ func (s *Serializer) setConn(conn io.ReadWriteCloser) {
 }
 
 func (s *Serializer) setupRemoteID() {
-	if info, ok := s.WriteCloser.(RemoteIdInfo); ok {
+	var wc any = s.WriteCloser
+	if info, ok := wc.(RemoteIdInfo); ok && !reflect.ValueOf(info).IsNil() {
 		s.remoteID = info.RemoteIdentity()
 	}
 }

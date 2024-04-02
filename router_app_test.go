@@ -34,7 +34,7 @@ func TestApp_Run(t *testing.T) {
 	conn.Logger(log.New(log.Writer(), "client ", 0))
 
 	t.Run("Query invalid", func(t *testing.T) {
-		err := Command(conn, "asdasdas")
+		err := Command(conn, "asdasdas \n")
 		if err == nil {
 			t.Fatal()
 		}

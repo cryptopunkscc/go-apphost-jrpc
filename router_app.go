@@ -42,7 +42,7 @@ func (s *App) routeQuery(ctx context.Context, query *astral.QueryData) (err erro
 	}
 
 	// authorize
-	if r.Authorize(ctx, query) {
+	if !r.Authorize(ctx, query) {
 		return query.Reject()
 	}
 

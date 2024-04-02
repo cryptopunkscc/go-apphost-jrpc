@@ -17,12 +17,16 @@ type Router struct {
 	logger        *log.Logger
 	registry      *Registry[*Caller]
 	routes        []string
-	port          string
 	env           []any
+	port          string
+	query         string
 	args          string
 	rpc           *Flow
 	registerRoute func(ctx context.Context, route string) error
 }
+
+var ErrMalformedRequest = errors.New("malformed request")
+var ErrUnauthorized = errors.New("unauthorized")
 
 func NewRouter(port string) *Router {
 	return &Router{
@@ -116,10 +120,12 @@ func (r *Router) Query(query string) *Router { return r.shift(query, false) }
 
 func (r *Router) shift(query string, force bool) *Router {
 	rr := *r
+	rr.rpc = NewFlow(rr.rpc)
 	q := strings.TrimPrefix(query, r.port)
 	q = strings.TrimPrefix(q, ".")
 	rr.registry, rr.args = r.registry.Unfold(q)
 	rr.port = strings.TrimSuffix(q, rr.args)
+
 	if rr.args == q && q != "" && force {
 		// nothing was unfolded query cannot be handled
 		rr.registry = NewRegistry[*Caller]()
@@ -131,19 +137,15 @@ func (r *Router) shift(query string, force bool) *Router {
 	if rr.args == "\n" {
 		rr.args = ""
 	}
-	if rr.rpc == nil {
-		rr.rpc = NewFlow(nil)
+	if rr.rpc.ByteScannerReader == nil {
 		rr.rpc.ByteScannerReader = NewByteScannerReader(strings.NewReader(""))
-	}
-	if rr.rpc != nil {
-		rr.rpc.Append([]byte(rr.args))
 	}
 	return &rr
 }
 
 func (r *Router) Authorize(ctx context.Context, query any) bool {
 	res, _ := r.Command("!").With(ctx, query).Call()
-	return len(res) > 0 && res[0] == false
+	return len(res) == 0 || res[0] != false
 }
 
 func (r *Router) Handle(ctx context.Context, query any, remoteId id.Identity, conn io.ReadWriteCloser) (err error) {
@@ -160,39 +162,53 @@ func (r *Router) Handle(ctx context.Context, query any, remoteId id.Identity, co
 				return
 			}
 
-		case !rr.rpc.IsEmpty():
+		case rr.args != "":
 			// caller not found and there are unhandled data in rpc buffer
-			if !rr.respond(ctx, MalformedRequest) {
+			if !rr.respond(ctx, ErrMalformedRequest) {
 				return
 			}
 		}
+
 		r.rpc.Clear()
 		if !scanner.Scan() {
 			return
 		}
-		rr = *r.Query(scanner.Text() + "\n")
+		rr = *r.Query(scanner.Text())
+
+		//authorize if registry changed
+		if rr.registry.value != r.registry.value && !rr.Authorize(ctx, query) {
+			if !rr.respond(ctx, ErrUnauthorized) {
+				return
+			}
+		}
 	}
 }
-
-var MalformedRequest = errors.New("malformed request")
 
 func (r *Router) Conn(conn io.ReadWriteCloser) *Router {
 	r.rpc = NewFlow(conn)
 	if r.logger != nil {
 		r.rpc.Logger(r.logger)
 	}
-	if r.args != "" {
-		r.rpc.Append([]byte(r.args))
-	}
 	return r
 }
 
 func (r *Router) Call() (result []any, err error) {
+	r.loadArgs()
 	if r.registry.IsEmpty() {
 		return nil, fmt.Errorf("route not found for query %s%s ", r.port, r.args)
 	}
 	result, err = r.registry.Get().With(r.env...).Call(r.rpc)
 	return
+}
+
+func (r *Router) loadArgs() {
+	if r.rpc != nil && r.args != "" {
+		if !strings.HasSuffix(r.args, "\n") {
+			r.args += "\n"
+		}
+		r.rpc.Append([]byte(r.args))
+	}
+	r.args = ""
 }
 
 func (r *Router) respond(ctx context.Context, err error, result ...any) (b bool) {

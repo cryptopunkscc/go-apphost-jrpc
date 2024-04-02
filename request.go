@@ -24,7 +24,11 @@ func NewRequest(
 }
 
 func (r *Request) Copy() Conn {
-	return NewRequest(r.remoteID, r.service)
+	rr := NewRequest(r.remoteID, r.service)
+	if r.logger != nil {
+		rr.Logger(r.logger.Logger)
+	}
+	return rr
 }
 
 func (r *Request) Flush() {
