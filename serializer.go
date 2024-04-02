@@ -63,6 +63,9 @@ func (s *Serializer) setupEncoding() {
 func (s *Serializer) setConn(conn io.ReadWriteCloser) {
 	s.WriteCloser = conn
 	s.ByteScannerReader = NewByteScannerReader(conn)
+	if s.logger != nil {
+		s.logger.ReadWriteCloser = s
+	}
 	s.setupEncoding()
 	s.setupRemoteID()
 }

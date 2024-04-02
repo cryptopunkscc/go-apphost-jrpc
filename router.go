@@ -120,13 +120,13 @@ func (r *Router) Query(query string) *Router { return r.shift(query, false) }
 
 func (r *Router) shift(query string, force bool) *Router {
 	rr := *r
-	rr.rpc = NewFlow(rr.rpc)
-	q := strings.TrimPrefix(query, r.port)
-	q = strings.TrimPrefix(q, ".")
-	rr.registry, rr.args = r.registry.Unfold(q)
-	rr.port = strings.TrimSuffix(q, rr.args)
+	rr.Conn(rr.rpc)
+	rr.query = strings.TrimPrefix(query, r.port)
+	rr.query = strings.TrimPrefix(rr.query, ".")
+	rr.registry, rr.args = r.registry.Unfold(rr.query)
+	rr.port = strings.TrimSuffix(rr.query, rr.args)
 
-	if rr.args == q && q != "" && force {
+	if rr.args == rr.query && rr.query != "" && force {
 		// nothing was unfolded query cannot be handled
 		rr.registry = NewRegistry[*Caller]()
 		return &rr
@@ -136,9 +136,6 @@ func (r *Router) shift(query string, force bool) *Router {
 	}
 	if rr.args == "\n" {
 		rr.args = ""
-	}
-	if rr.rpc.ByteScannerReader == nil {
-		rr.rpc.ByteScannerReader = NewByteScannerReader(strings.NewReader(""))
 	}
 	return &rr
 }

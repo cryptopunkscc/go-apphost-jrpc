@@ -2,6 +2,7 @@ package jrpc
 
 import (
 	"io"
+	"strings"
 )
 
 type ByteScannerReader interface {
@@ -34,6 +35,9 @@ func (r *byteScannerReader) Buffer() []byte {
 }
 
 func NewByteScannerReader(reader io.Reader) ByteScannerReader {
+	if reader == nil {
+		reader = strings.NewReader("")
+	}
 	r := &byteScannerReader{Reader: reader}
 	return r
 }
