@@ -1,11 +1,14 @@
 simplified flow
 ```mermaid
 flowchart
-    Query([Query]) --> Authorize -.only on first attempt \n when.-> Rejected([Rejected])
+    App([App]) --> Query
+    Module([Module]) --> Query
+    Query --> Authorize -.only on first query.-> Rejected([Rejected])
     Authorize --> Execute --> 
     Respond --> Return([EOF])
-    Respond -->Next --> Return2([EOF])
-    Next --> Authorize
+    Respond -->Await --> Return2([EOF])
+    Await --> Execute
+    Await --if query changed--> Authorize
 ```
 
 exact flow
@@ -26,6 +29,6 @@ flowchart
     Router.Call[Router.Call] --> Router.respond
     Router.Handle --> Router.respond --> Return(["EOF"])
     Router.respond --> Scanner.Scan --> Return2(["EOF"])
-    Scanner.Scan --> Router.Query2[Router.Query] --> 
-    Router.Authorize2[Router.Authorize] --> Router.Handle
+    Scanner.Scan --> Router.Query2[Router.Query] --> Router.Handle
+    Router.Query2 --> Router.Authorize2[Router.Authorize] --> Router.Handle
 ```

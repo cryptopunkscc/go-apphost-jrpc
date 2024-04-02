@@ -102,6 +102,9 @@ func (r *Router) Run(ctx context.Context) (err error) {
 func (r *Router) registerApi() *Router {
 	var arr []string
 	for s := range r.registry.All() {
+		if strings.HasSuffix(s, "!") {
+			continue
+		}
 		arr = append(arr, s)
 	}
 	r.Func("api", func() []string { return arr })

@@ -1,7 +1,16 @@
 package jrpc
 
-type raw struct {
-	bytes []byte
+import (
+	"encoding/json"
+	"io"
+)
+
+func JsonCodecs(rw io.ReadWriter) (e Encoder, d Decoder, m Marshal, u Unmarshal) {
+	e = json.NewEncoder(rw)
+	d = json.NewDecoder(rw)
+	m = json.Marshal
+	u = json.Unmarshal
+	return
 }
 
 func (a *raw) UnmarshalJSON(b []byte) error {

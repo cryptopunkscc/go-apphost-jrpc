@@ -1,7 +1,6 @@
 package jrpc
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"io"
@@ -26,6 +25,7 @@ type Marshal func(v any) ([]byte, error)
 type Unmarshal func(data []byte, v any) error
 type RemoteIdInfo interface{ RemoteIdentity() id.Identity }
 type Codecs func(io.ReadWriter) (Encoder, Decoder, Marshal, Unmarshal)
+type raw struct{ bytes []byte }
 
 func (s *Serializer) RemoteIdentity() (i id.Identity) {
 	return s.remoteID
@@ -57,14 +57,6 @@ func (s *Serializer) setupEncoding() {
 		rw = s.logger
 	}
 	s.enc, s.dec, s.marshal, s.unmarshal = s.codecs(rw)
-}
-
-func JsonCodecs(rw io.ReadWriter) (e Encoder, d Decoder, m Marshal, u Unmarshal) {
-	e = json.NewEncoder(rw)
-	d = json.NewDecoder(rw)
-	m = json.Marshal
-	u = json.Unmarshal
-	return
 }
 
 func (s *Serializer) setConn(conn io.ReadWriteCloser) {

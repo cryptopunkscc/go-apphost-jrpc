@@ -1,7 +1,6 @@
 package jrpc
 
 import (
-	"encoding/json"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/lib/astral"
 	"io"
@@ -42,7 +41,7 @@ func (r *Request) Call(method string, value any) (err error) {
 
 	// marshal args
 	if value != nil {
-		args, err := json.Marshal(value)
+		args, err := r.marshal(value)
 		if err != nil {
 			return err
 		}
