@@ -111,12 +111,20 @@ func (r *Router) registerApi() *Router {
 	return r
 }
 
-func (r *Router) Query(query string) *Router {
+func (r *Router) Command(cmd string) *Router { return r.shift(cmd, true) }
+func (r *Router) Query(query string) *Router { return r.shift(query, false) }
+
+func (r *Router) shift(query string, force bool) *Router {
 	rr := *r
 	q := strings.TrimPrefix(query, r.port)
 	q = strings.TrimPrefix(q, ".")
 	rr.registry, rr.args = r.registry.Unfold(q)
 	rr.port = strings.TrimSuffix(q, rr.args)
+	if rr.args == q && q != "" && force {
+		// nothing was unfolded query cannot be handled
+		rr.registry = NewRegistry[*Caller]()
+		return &rr
+	}
 	if rr.port == "" {
 		rr.port = r.port
 	}
@@ -134,7 +142,7 @@ func (r *Router) Query(query string) *Router {
 }
 
 func (r *Router) Authorize(ctx context.Context, query any) bool {
-	res, _ := r.Query("!").With(ctx, query).Call()
+	res, _ := r.Command("!").With(ctx, query).Call()
 	return len(res) > 0 && res[0] == false
 }
 

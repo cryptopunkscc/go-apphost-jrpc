@@ -48,7 +48,7 @@ func (m Module) RouteQuery(ctx context.Context, query net.Query, caller net.Secu
 }
 
 func (m Module) authorize(ctx context.Context, callerID id.Identity, query any) bool {
-	res, _ := m.Query("!").With(ctx, query).Call()
+	res, _ := m.Command("!").With(ctx, query).Call()
 	if len(res) > 0 {
 		switch v := res[0].(type) {
 		case bool:
