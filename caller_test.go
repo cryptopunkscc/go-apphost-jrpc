@@ -53,6 +53,28 @@ func TestExecutor_Call(t *testing.T) {
 			wantErr:    assert.NoError,
 		},
 		{
+			name: "method with cli positional arguments",
+			fields: fields{
+				function: testStruct{0.1}.method,
+			},
+			args: args{
+				args: " 1 true a\n",
+			},
+			wantResult: []any{1, true, "a", 0.1},
+			wantErr:    assert.NoError,
+		},
+		{
+			name: "method with cli mixed arguments ",
+			fields: fields{
+				function: testFunc7,
+			},
+			args: args{
+				args: " 1 true -s a\n",
+			},
+			wantResult: []any{1, true, "a"},
+			wantErr:    assert.NoError,
+		},
+		{
 			name: "function with json object argument",
 			fields: fields{
 				function: testFunc2,
@@ -174,3 +196,4 @@ func testFunc3(c context.Context, s string, i int) (any, any, int)    { return c
 func testFunc4(arg1 TestArg, arg2 TestArg3) (TestArg, TestArg3)       { return arg1, arg2 }
 func testFunc5(arg1 TestArgPos) TestArgPos                            { return arg1 }
 func testFunc6(arg1 TestArgPos, arg2 TestArg2) (TestArgPos, TestArg2) { return arg1, arg2 }
+func testFunc7(i int, b bool, s TestArg2) (int, bool, string)         { return i, b, s.S }

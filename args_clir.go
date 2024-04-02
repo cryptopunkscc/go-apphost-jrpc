@@ -2,6 +2,7 @@ package jrpc
 
 import (
 	"errors"
+	"fmt"
 	"github.com/leaanthony/clir"
 	"io"
 	"reflect"
@@ -38,7 +39,7 @@ func (d clirArgsDecoder) Decode(conn ByteScannerReader, args []any) (err error) 
 	if _, err = conn.Read(bytes); err != nil {
 		return
 	}
-	bytes = bytes[:len(bytes)-2]
+	bytes = bytes[:len(bytes)-1]
 	err = d.Unmarshal(bytes, args)
 	return
 }
@@ -53,7 +54,7 @@ func (d clirArgsDecoder) TestScan(scan io.ByteScanner) bool {
 	return err == nil && (b == '$' || b == ' ')
 }
 
-func (d clirArgsDecoder) Unmarshal(bytes []byte, args []any) error {
+func (d clirArgsDecoder) Unmarshal(bytes []byte, args []any) (err error) {
 	f := strings.Fields(string(bytes[1:]))
 	for i, s := range f {
 		if len(s) < 2 {
@@ -70,13 +71,29 @@ func (d clirArgsDecoder) Unmarshal(bytes []byte, args []any) error {
 		f[i] = s
 	}
 	c := clir.NewCli("", "", "").Action(func() error { return nil })
+	flags := false
 	for _, a := range args {
 		v := reflect.ValueOf(a)
-		if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
-			return errors.New("invalid arg type")
+		if v.Kind() == reflect.Ptr && v.Elem().Kind() == reflect.Struct {
+			c.AddFlags(a)
+			flags = true
+			continue
 		}
-		c.AddFlags(a)
+
+		if len(f) == 0 {
+			break
+		}
+		s := f[0]
+		f = f[1:]
+		_, err = fmt.Sscan(s, a)
+		if err == nil {
+			continue
+		}
+
+		return errors.New("invalid arg type")
 	}
-	err := c.Run(f...)
+	if flags {
+		err = c.Run(f...)
+	}
 	return err
 }
