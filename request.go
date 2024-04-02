@@ -41,6 +41,9 @@ func (r *Request) Call(method string, value any) (err error) {
 
 	// marshal args
 	if value != nil {
+		if r.marshal == nil {
+			r.setupEncoding()
+		}
 		args, err := r.marshal(value)
 		if err != nil {
 			return err
