@@ -136,6 +136,8 @@ func (r *Router) shift(query string, force bool) *Router {
 	}
 	if rr.args == "\n" {
 		rr.args = ""
+	} else {
+		rr.args, _ = strings.CutPrefix(rr.args, "?")
 	}
 	return &rr
 }

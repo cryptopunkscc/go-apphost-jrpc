@@ -9,12 +9,38 @@ import (
 	"github.com/stretchr/testify/assert"
 	"log"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 )
 
 func TestApp_Run_basic(t *testing.T) {
+	skipped := []struct {
+		client int
+		cases  []int
+		routes int
+	}{
+		{routes: 2, client: 1, cases: []int{6, 7, 10, 11, 12, 13, 14, 15, 18, 19, 21, 22, 23, 24, 26, 27, 28, 31, 32, 34, 35, 38, 39}},
+		{routes: 2, client: 2},
+		{routes: 3, client: 2},
+	}
+
 	port := "test_app"
+	clients := []func(*testing.T) (Conn, error){
+		func(*testing.T) (c Conn, err error) {
+			c = NewRequest(id.Anyone, port)
+			c.Logger(log.New(log.Writer(), "", 0))
+			return
+		},
+		func(t *testing.T) (c Conn, err error) {
+			c, err = QueryFlow(id.Anyone, port)
+			if err != nil {
+				return
+			}
+			c.Logger(log.New(log.Writer(), "", 0))
+			return
+		},
+	}
 	setHandlers := func(app *App) {
 		app.Func("func0", function0)
 		app.Func("func0!", function0)
@@ -109,40 +135,15 @@ func TestApp_Run_basic(t *testing.T) {
 		{query: `func10`, arg: struct3{structI{1}, structB{true}}, expected: struct3{structI{1}, structB{true}}},
 		{query: `func10`, arg: struct3{StructI: structI{1}}, expected: struct3{structI{1}, structB{false}}},
 	}
-	clients := []func(*testing.T) (Conn, error){
-		func(*testing.T) (c Conn, err error) {
-			c = NewRequest(id.Anyone, port)
-			c.Logger(log.New(log.Writer(), "", 0))
-			return
-		},
-		func(t *testing.T) (c Conn, err error) {
-			c, err = QueryFlow(id.Anyone, port)
-			if err != nil {
-				return
-			}
-			c.Logger(log.New(log.Writer(), "", 0))
-			return
-		},
-	}
-	skipped := []struct {
-		suit   int
-		client int
-		case_  int
-		routes int
-	}{
-		{suit: 2},
-		{routes: 2},
-		{routes: 3, client: 2},
-	}
 	skip := func(t *testing.T, routes int, client int, case_ int, err error) {
 		for _, s := range skipped {
 			a1 := s.routes == routes+1
 			a2 := s.client == client+1
-			a3 := s.case_ == case_+1
+			a3 := slices.Contains(s.cases, case_+1)
 			if a1 || a2 || a3 {
 				b1 := a1 || s.routes == 0
 				b2 := a2 || s.client == 0
-				b3 := a3 || s.case_ == 0
+				b3 := a3 || len(s.cases) == 0
 				if b1 && b2 && b3 {
 					t.Skip(err)
 					return
@@ -177,7 +178,7 @@ func TestApp_Run_basic(t *testing.T) {
 							t.Fatal(err)
 						}
 						t.Cleanup(client.Flush)
-						t.Run(tt.query, func(t *testing.T) {
+						t.Run(fmt.Sprintf("%d.%s", i3+1, tt.query), func(t *testing.T) {
 							args := tt.args
 							if tt.arg != nil {
 								args = append([]any{tt.arg}, args...)

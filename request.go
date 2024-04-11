@@ -38,13 +38,22 @@ func (r *Request) Flush() {
 }
 
 func (r *Request) Call(method string, value any) (err error) {
-	query := r.service
-	if method != "" {
-		query += "." + method
+	// build base query
+	query := ""
+	switch {
+	case r.service == "":
+		query = method
+	case method == "":
+		query = r.service
+	default:
+		query = r.service + "." + method
 	}
 
 	// marshal args
 	if value != nil {
+		if query != "" {
+			query += "?"
+		}
 		if r.marshal == nil {
 			r.setupEncoding()
 		}
