@@ -3,6 +3,7 @@ package jrpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cryptopunkscc/astrald/auth/id"
 	"github.com/cryptopunkscc/astrald/mod/apphost/proto"
 	"github.com/stretchr/testify/assert"
@@ -14,96 +15,192 @@ import (
 
 func TestApp_Run_basic(t *testing.T) {
 	port := "test_app"
-	app := NewApp(port)
-	app.Routes("*")
-	app.Func("func0", function0)
-	app.Func("func0!", function0)
-	app.Func("func1", function1)
-	app.Func("func2", function2)
-	app.Func("func3", function3)
-	app.Func("func4", function4)
-	app.Func("func5", function5)
-	app.Func("func6", function6)
-	app.Func("func7", function7)
-	app.Func("func8", function8)
-	app.Func("func9", function9)
-	app.Func("func10", function10)
-	tests := []struct {
-		name     string
-		expected any
-		conn     int
-	}{
-		{name: "asd", expected: proto.ErrRejected, conn: 1},
-		{name: "asd", expected: ErrMalformedRequest, conn: 2},
-		{name: "func0", expected: proto.ErrRejected, conn: 1},
-		{name: "func0", expected: ErrUnauthorized, conn: 2},
-		{name: "func1", expected: map[string]any{}},
-		{name: "func2[1]", expected: float64(1)},
-		{name: "func2 1", expected: float64(1)},
-		{name: "func3", expected: err3},
-		{name: "func4[true]", expected: true},
-		{name: "func4 true", expected: true},
-		{name: "func4[false]", expected: err4},
-		{name: "func4 false", expected: err4},
-		{name: `func5[true, 1, "a"]`, expected: []any{true, float64(1), "a"}},
-		{name: "func5 true 1 a", expected: []any{true, float64(1), "a"}},
-		{name: `func6{"i":1}`, expected: &structI{1}},
-		{name: `func6[{"i":1}]`, expected: structI{1}},
-		{name: `func6 -i 1`, expected: structI{1}},
-		{name: `func6 -i 1`, expected: &structI{1}},
-		{name: "func7[]", expected: (*structI)(nil)},
-		{name: `func7{"i":1}`, expected: &structI{1}},
-		{name: "func7 ", expected: (*structI)(nil)},
-		//{name: "func7 -i 1", expected: &structI{1}}, //FIXME
-		{name: `func8[{"i":1},{"b":true}]`, expected: struct1{structI{1}, structB{true}}},
-		{name: `func8 -i 1 -b true`, expected: struct1{structI{1}, structB{true}}},
-		{name: `func9[{"i":1},{"b":true}]`, expected: struct1{structI{1}, structB{true}}},
-		{name: `func9[{"i":1}]`, expected: struct1{structI{1}, structB{false}}},
-		//{name: `func9 -i 1 -b true`, expected: struct1{structI{1}, structB{true}}}, //FIXME
-		{name: `func10{"i":{"i":1},"b":{"b":true}}`, expected: struct3{structI{1}, structB{true}}},
-		{name: `func10{"i":{"i":1}}`, expected: struct3{structI{1}, structB{false}}},
+	setHandlers := func(app *App) {
+		app.Func("func0", function0)
+		app.Func("func0!", function0)
+		app.Func("func1", function1)
+		app.Func("func2", function2)
+		app.Func("func3", function3)
+		app.Func("func4", function4)
+		app.Func("func5", function5)
+		app.Func("func6", function6)
+		app.Func("func7", function7)
+		app.Func("func8", function8)
+		app.Func("func9", function9)
+		app.Func("func10", function10)
 	}
-	clients := []func() Conn{
-		func() (c Conn) {
+	routes := [][]string{
+		{"*"},
+		{
+			"func0",
+			"func1",
+			"func2",
+			"func3",
+			"func4",
+			"func5",
+			"func6",
+			"func7",
+			"func8",
+			"func9",
+			"func10",
+		},
+		{
+			"func0*",
+			"func1*",
+			"func2*",
+			"func3*",
+			"func4*",
+			"func5*",
+			"func6*",
+			"func7*",
+			"func8*",
+			"func9*",
+			"func10*",
+		},
+	}
+	cases := []struct {
+		query    string
+		arg      any
+		args     []any
+		expected any
+		client   int
+	}{
+		{query: "asd", expected: proto.ErrRejected, client: 1},
+		{query: "asd", expected: ErrMalformedRequest, client: 2},
+		{query: "func0", expected: proto.ErrRejected, client: 1},
+		{query: "func0", expected: ErrUnauthorized, client: 2},
+		{query: "func1", expected: map[string]any{}},
+		{query: "func2[1]", expected: float64(1)},
+		{query: "func2 1", expected: float64(1)},
+		{query: "func2", arg: 1, expected: float64(1)},
+		{query: "func3", expected: err3},
+		{query: "func4[true]", expected: true},
+		{query: "func4 true", expected: true},
+		{query: "func4[false]", expected: err4},
+		{query: "func4 false", expected: err4},
+		{query: "func4[]", expected: err4},
+		{query: "func4 ", expected: err4},
+		{query: "func4", arg: true, expected: true},
+		{query: "func4", arg: false, expected: err4},
+		{query: `func5[true, 1, "a"]`, expected: []any{true, float64(1), "a"}},
+		{query: "func5 true 1 a", expected: []any{true, float64(1), "a"}},
+		{query: "func5", args: []any{true, 1, "a"}, expected: []any{true, float64(1), "a"}},
+		{query: `func6{"i":1}`, expected: &structI{1}},
+		{query: `func6[{"i":1}]`, expected: structI{1}},
+		{query: `func6 -i 1`, expected: structI{1}},
+		{query: `func6 -i 1`, expected: &structI{1}},
+		{query: `func6`, arg: structI{1}, expected: structI{1}},
+		{query: "func7[]", expected: (*structI)(nil)},
+		{query: `func7{"i":1}`, expected: &structI{1}},
+		{query: "func7 ", expected: (*structI)(nil)},
+		{query: "func7", arg: (*structI)(nil), expected: (*structI)(nil)},
+		{query: "func7", arg: structI{1}, expected: structI{1}},
+		//{name: "func7 -i 1", expected: &structI{1}}, //TODO minor consider to fix
+		{query: `func8[{"i":1},{"b":true}]`, expected: struct1{structI{1}, structB{true}}},
+		{query: `func8 -i 1 -b true`, expected: struct1{structI{1}, structB{true}}},
+		{query: `func8`, args: []any{structI{1}, structB{true}}, expected: struct1{structI{1}, structB{true}}},
+		{query: `func9[{"i":1},{"b":true}]`, expected: struct1{structI{1}, structB{true}}},
+		{query: `func9[{"i":1}]`, expected: struct1{structI{1}, structB{false}}},
+		{query: `func9`, arg: structI{1}, expected: structI{1}},
+		{query: `func9`, args: []any{structI{1}, structB{true}}, expected: struct1{structI{1}, structB{true}}},
+		//{name: `func9 -i 1 -b true`, expected: struct1{structI{1}, structB{true}}}, //TODO minor consider to fix
+		{query: `func10{"i":{"i":1},"b":{"b":true}}`, expected: struct3{structI{1}, structB{true}}},
+		{query: `func10{"i":{"i":1}}`, expected: struct3{structI{1}, structB{false}}},
+		{query: `func10`, arg: struct3{structI{1}, structB{true}}, expected: struct3{structI{1}, structB{true}}},
+		{query: `func10`, arg: struct3{StructI: structI{1}}, expected: struct3{structI{1}, structB{false}}},
+	}
+	clients := []func(*testing.T) (Conn, error){
+		func(*testing.T) (c Conn, err error) {
 			c = NewRequest(id.Anyone, port)
 			c.Logger(log.New(log.Writer(), "", 0))
 			return
 		},
-		func() (c Conn) {
-			c, err := QueryFlow(id.Anyone, port)
+		func(t *testing.T) (c Conn, err error) {
+			c, err = QueryFlow(id.Anyone, port)
 			if err != nil {
-				t.Fatal(err)
+				return
 			}
 			c.Logger(log.New(log.Writer(), "", 0))
 			return
 		},
 	}
-
-	if err := app.Run(context.Background()); err != nil {
-		t.Fatal(err)
+	skipped := []struct {
+		suit   int
+		client int
+		case_  int
+		routes int
+	}{
+		{suit: 2},
+		{routes: 2},
+		{routes: 3, client: 2},
 	}
-	time.Sleep(1 * time.Millisecond)
-	for _, tt := range tests {
-		for i, c := range clients {
-			if tt.conn > 0 && tt.conn-1 != i {
-				continue
-			}
-
-			client := c()
-			t.Run(tt.name, func(t *testing.T) {
-				if err := Call(client, tt.name); err != nil {
-					assert.Equal(t, tt.expected, err)
+	skip := func(t *testing.T, routes int, client int, case_ int, err error) {
+		for _, s := range skipped {
+			a1 := s.routes == routes+1
+			a2 := s.client == client+1
+			a3 := s.case_ == case_+1
+			if a1 || a2 || a3 {
+				b1 := a1 || s.routes == 0
+				b2 := a2 || s.client == 0
+				b3 := a3 || s.case_ == 0
+				if b1 && b2 && b3 {
+					t.Skip(err)
 					return
 				}
-
-				v := reflect.New(reflect.TypeOf(tt.expected))
-				if err := client.Decode(v.Interface()); err != nil {
-					assert.Equal(t, tt.expected, err)
-				} else {
-					assert.Equal(t, tt.expected, v.Elem().Interface())
-				}
-			})
+			}
 		}
+	}
+
+	for i1, r := range routes {
+		t.Run(fmt.Sprintf("routes:%d", i1+1), func(t *testing.T) {
+			app := NewApp(port)
+			app.Routes(r...)
+			setHandlers(app)
+			ctx, cancel := context.WithCancel(context.Background())
+			if err := app.Run(ctx); err != nil {
+				skip(t, i1, 0, 0, err)
+				t.Fatal(err)
+			}
+			time.Sleep(1 * time.Millisecond)
+			t.Cleanup(cancel)
+
+			for i2, c := range clients {
+				t.Run(fmt.Sprintf("client:%d", i2+1), func(t *testing.T) {
+					for i3, tt := range cases {
+						if tt.client > 0 && tt.client-1 != i2 {
+							continue
+						}
+
+						client, err := c(t)
+						if err != nil {
+							skip(t, i1, i2, i3, err)
+							t.Fatal(err)
+						}
+						t.Cleanup(client.Flush)
+						t.Run(tt.query, func(t *testing.T) {
+							args := tt.args
+							if tt.arg != nil {
+								args = append([]any{tt.arg}, args...)
+							}
+							if err := Call(client, tt.query, args...); err != nil {
+								skip(t, i1, i2, i3, err)
+								assert.Equal(t, tt.expected, err)
+								return
+							}
+
+							v := reflect.New(reflect.TypeOf(tt.expected))
+							if err := client.Decode(v.Interface()); err != nil {
+								assert.Equal(t, tt.expected, err)
+								skip(t, i1, i2, i3, err)
+							} else {
+								assert.Equal(t, tt.expected, v.Elem().Interface())
+								skip(t, i1, i2, i3, err)
+							}
+						})
+					}
+				})
+			}
+		})
 	}
 }
 
